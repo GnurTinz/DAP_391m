@@ -127,8 +127,7 @@ left_dir, right_dir, img_counter = setup_person_folder(
 # 4. CAMERA
 # =========================================================
 
-cap = cv2.VideoCapture(0,
-    cv2.CAP_DSHOW
+cap = cv2.VideoCapture(1
 )
 
 is_collecting = False
