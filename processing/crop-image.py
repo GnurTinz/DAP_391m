@@ -1,7 +1,7 @@
 import cv2
 import os
 import glob
-import time
+import argparse
 
 def crop_image(input_folder, output_folder, discard_folder):
     os.makedirs(output_folder, exist_ok=True)
@@ -118,6 +118,34 @@ def process_all_path():
             print("Handling:", tmp)
             f.write(tmp)
 
+def main():
+    # Bước 1: Khởi tạo bộ phân tích tham số (Argument Parser)
+    parser = argparse.ArgumentParser(
+        description="Chương trình cắt ảnh hàng loạt bằng OpenCV và phân loại ảnh."
+    )
+
+    # Bước 2: Định nghĩa các tham số đầu vào (Add Arguments)
+    
+    # Tham số BẮT BUỘC (Positional Argument): Không có dấu gạch ngang trước tên
+    parser.add_argument(
+        "input_folder", 
+        type=str, 
+        help="Đường dẫn đến thư mục chứa ảnh gốc cần xử lý."
+    )
+
+    # Tham số TÙY CHỌN (Optional Argument): Có dấu gạch ngang (-o hoặc --output)
+    parser.add_argument(
+        "-o", "--output", 
+        type=str, 
+        default="output_folder", 
+        help="Thư mục lưu ảnh đã cắt (Mặc định: output_folder)."
+    )
+
+    args = parser.parse_args()
+    output_folder = str(args.input_folder).replace('dataset', 'preprocessed')
+    crop_image(args.input_folder, output_folder, discard_folder="../data-collection/discard")
+
 if __name__ == '__main__':
     # process_all_path()
-    crop_image("../data-collection/dataset/c1/person_1/left", "../data-collection/preprocessed/c1/person_1/left", discard_folder="../data-collection/discard")
+    # crop_image("../data-collection/dataset/c1/person_1/left", "../data-collection/preprocessed/c1/person_1/left", discard_folder="../data-collection/discard")
+    main()
