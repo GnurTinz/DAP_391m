@@ -3,6 +3,7 @@ import os
 import glob
 import argparse
 
+# Ghi chú thử
 def crop_image(input_folder, output_folder, discard_folder):
     os.makedirs(output_folder, exist_ok=True)
     os.makedirs(discard_folder, exist_ok=True)
