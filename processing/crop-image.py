@@ -30,10 +30,9 @@ def crop_image(input_folder, output_folder, discard_folder):
         if image is None:
             print(f"Không thể đọc ảnh: {filename}, tự động bỏ qua.")
             continue
-
+        
         window_name = f"Dang xu ly: {filename}"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        
         cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
 
         roi = cv2.selectROI(window_name, image, showCrosshair=True, fromCenter=False)
