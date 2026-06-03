@@ -29,7 +29,7 @@ def resource_path(relative_path):
 # )
 
 MODEL_PATH = "hand_landmarker.task"
-DATASET_DIR = "dataset"
+DATASET_DIR = "../dataset"
 
 MAX_HANDS = 2
 

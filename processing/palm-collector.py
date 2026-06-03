@@ -10,7 +10,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
 video = cv2.VideoCapture(1)
-DATASET_DIR = "dataset-razer"
+DATASET_DIR = "../dataset-razer"
 
 if not os.path.exists(DATASET_DIR):
     os.makedirs(DATASET_DIR)
