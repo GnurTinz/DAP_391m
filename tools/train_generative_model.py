@@ -2,7 +2,16 @@ import os
 import argparse
 import yaml
 import logging
+import ssl
 from datetime import datetime
+
+# Bypass SSL verification for downloading datasets on Windows
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 
 import torch
 from torch.utils.data import DataLoader
@@ -18,10 +27,11 @@ class GenerativeTrainer(Trainer):
     """
     Kế thừa từ Trainer để train riêng VAE + Contrastive Loss.
     """
-    def __init__(self, model, train_loader, config, logger=None, writer=None, device='cpu'):
+    def __init__(self, model, train_loader, config, logger=None, writer=None, device='cpu', ckpt_prefix='vae_con_model'):
         super().__init__(model, train_loader, config, logger)
         self.writer = writer
         self.device = device
+        self.ckpt_prefix = ckpt_prefix
         
         # Khởi tạo thêm Contrastive Loss
         self.supcon_loss = SupConLoss(config.get('losses', {}))
@@ -32,6 +42,9 @@ class GenerativeTrainer(Trainer):
 
     def train(self):
         self.model.train()
+        best_loss = float('inf')
+        os.makedirs(os.path.join('logs', 'checkpoints'), exist_ok=True)
+        
         for epoch in range(self.epochs):
             epoch_loss = 0.0
             
@@ -89,6 +102,18 @@ class GenerativeTrainer(Trainer):
                     self.writer.add_images('Epoch/Original_Images', images[:4], epoch)
                     self.writer.add_images('Epoch/Reconstructed_Images', outputs['x_hat'][:4], epoch)
 
+            # Checkpoint best
+            if avg_loss < best_loss:
+                best_loss = avg_loss
+                best_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_best.pth")
+                torch.save(self.model.state_dict(), best_path)
+                if self.logger:
+                    self.logger.info(f"Saved new best model with loss: {best_loss:.4f}")
+            
+            # Checkpoint last
+            last_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_last.pth")
+            torch.save(self.model.state_dict(), last_path)
+
 
 def setup_logging(config):
     log_dir = config.get('logging', {}).get('log_dir', 'logs/experiments')
@@ -102,7 +127,7 @@ def setup_logging(config):
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     
-    fh = logging.FileHandler(log_file)
+    fh = logging.FileHandler(log_file, encoding='utf-8')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
     
@@ -124,7 +149,11 @@ def main():
     logger.info(f"Loaded config from: {args.config}")
     
     tb_dir = os.path.join('logs', 'tensorboard', f"{exp_name}_{timestamp}")
-    writer = SummaryWriter(log_dir=tb_dir) if config.get('logging', {}).get('enable_tensorboard', True) else None
+    if config.get('logging', {}).get('enable_tensorboard', True):
+        os.makedirs(tb_dir, exist_ok=True)
+        writer = SummaryWriter(log_dir=tb_dir)
+    else:
+        writer = None
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info(f"Using device: {device}")
@@ -143,27 +172,32 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
     # Model
-    model = ProbabilisticPalmModel(config.get('model', {}))
+    model_config = config.get('model', {})
+    if 'decoder' not in model_config:
+        model_config['decoder'] = {}
+    model_config['decoder']['image_size'] = config.get('dataset', {}).get('image_size', [128, 128])
+    model = ProbabilisticPalmModel(model_config)
     model.use_decoder = True 
     
+    logger.info("=== MODEL ARCHITECTURE ===")
+    logger.info(model)
+    
     # Train qua GenerativeTrainer (Kế thừa từ Base Trainer)
+    ckpt_prefix = f"vae_con_model_{exp_name}_{timestamp}"
     trainer = GenerativeTrainer(
         model=model,
         train_loader=train_loader,
         config=config,
         logger=logger,
         writer=writer,
-        device=device
+        device=device,
+        ckpt_prefix=ckpt_prefix
     )
     
     logger.info("Bắt đầu quá trình huấn luyện VAE + Contrastive...")
     trainer.train()
 
-    # Save Model
-    os.makedirs('logs/checkpoints', exist_ok=True)
-    ckpt_path = os.path.join('logs', 'checkpoints', f"vae_con_model_{exp_name}_{timestamp}.pth")
-    torch.save(model.state_dict(), ckpt_path)
-    logger.info(f"Training completed. Model saved at: {ckpt_path}")
+    logger.info("Training completed.")
     
     if writer:
         writer.close()

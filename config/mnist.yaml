@@ -13,6 +13,8 @@ model:
     pretrained: false
   decoder:
     use_decoder: true
+    latent_dim: 128
+    image_size: [32, 32]
     hidden_dims: [128, 64, 32]
   verifier:
     hidden_dims: [256, 128]

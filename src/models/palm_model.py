@@ -15,7 +15,12 @@ class ProbabilisticPalmModel(BaseModel):
         
         self.use_decoder = config.get('decoder', {}).get('use_decoder', True)
         if self.use_decoder:
-            self.decoder = PalmDecoder(config.get('decoder', {}))
+            decoder_config = dict(config.get('decoder', {}))
+            if 'latent_dim' not in decoder_config:
+                decoder_config['latent_dim'] = config.get('encoder', {}).get('latent_dim', 256)
+            if 'image_size' not in decoder_config:
+                decoder_config['image_size'] = config.get('dataset', {}).get('image_size', [128, 128])
+            self.decoder = PalmDecoder(decoder_config)
             
         self.verifier = PairVerifier(config.get('verifier', {}))
         
