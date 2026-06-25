@@ -20,7 +20,7 @@ class CNNBaseDecoder(nn.Module):
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 3, kernel_size=4, stride=2, padding=1),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, z):
@@ -43,7 +43,7 @@ class MLPDecoder(nn.Module):
             nn.Linear(512, 1024),
             nn.ReLU(),
             nn.Linear(1024, out_dim),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, z):

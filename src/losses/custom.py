@@ -27,7 +27,11 @@ class ReconstructionLoss(BaseLoss):
     """
     def __init__(self, config: dict):
         super().__init__(config)
-        self.criterion = nn.L1Loss()
+        loss_type = config.get('type', 'mse')
+        if loss_type.lower() == 'l1':
+            self.criterion = nn.L1Loss()
+        else:
+            self.criterion = nn.MSELoss()
 
     def forward(self, x, x_hat):
         return self.criterion(x_hat, x)

@@ -16,6 +16,7 @@ else:
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from src.datasets.palm_dataset import PalmPrintDataset
 from src.datasets.mnist_dataset import MNISTDataset
@@ -44,15 +45,17 @@ class GenerativeTrainer(Trainer):
         
         # Đảm bảo model lên đúng device
         self.model = self.model.to(self.device)
+        self.start_epoch = 0
+        self.best_loss = float('inf')
 
     def train(self):
         self.model.train()
-        best_loss = float('inf')
+        best_loss = self.best_loss
         os.makedirs(os.path.join('logs', 'checkpoints'), exist_ok=True)
         log_interval = self.config.get('training', {}).get('log_interval', 10)
         save_interval = self.config.get('training', {}).get('save_interval', 1)
         
-        for epoch in range(self.epochs):
+        for epoch in range(self.start_epoch, self.epochs):
             # Update loss weights for the epoch
             weights = self.loss_scheduler.get_weights(epoch)
             if 'beta_kl' in weights: self.beta_kl = weights['beta_kl']
@@ -67,7 +70,8 @@ class GenerativeTrainer(Trainer):
                                  
             epoch_loss = 0.0
             
-            for batch_idx, (images, labels) in enumerate(self.train_loader):
+            pbar = tqdm(self.train_loader, desc=f"Epoch [{epoch+1}/{self.epochs}]")
+            for batch_idx, (images, labels) in enumerate(pbar):
                 if epoch == 0 and batch_idx == 0:
                     if self.logger:
                         self.logger.info(f"--- First Batch Info ---")
@@ -108,12 +112,19 @@ class GenerativeTrainer(Trainer):
                 epoch_loss += total_loss.item()
                 global_step = epoch * len(self.train_loader) + batch_idx
                 
+                pbar.set_postfix({
+                    'Total': f"{total_loss.item():.4f}",
+                    'Rec': f"{rec.item():.4f}",
+                    'KL': f"{kl.item():.4f}",
+                    'Con': f"{con.item():.4f}"
+                })
+                
                 # Logging theo log_interval
                 if batch_idx % log_interval == 0:
                     if self.logger:
-                        self.logger.info(f"Epoch [{epoch+1}/{self.epochs}], Batch [{batch_idx}/{len(self.train_loader)}] "
-                                         f"Total Loss: {total_loss.item():.4f}, Recon: {rec.item():.4f}, "
-                                         f"KL: {kl.item():.4f}, Con: {con.item():.4f}")
+                        self.logger.debug(f"Epoch [{epoch+1}/{self.epochs}], Batch [{batch_idx}/{len(self.train_loader)}] "
+                                          f"Total Loss: {total_loss.item():.4f}, Recon: {rec.item():.4f}, "
+                                          f"KL: {kl.item():.4f}, Con: {con.item():.4f}")
                     if self.writer:
                         self.writer.add_scalar('Batch/Total_Loss', total_loss.item(), global_step)
                         self.writer.add_scalar('Batch/Recon_Loss', rec.item(), global_step)
@@ -137,14 +148,24 @@ class GenerativeTrainer(Trainer):
             if avg_loss < best_loss:
                 best_loss = avg_loss
                 best_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_best.pth")
-                torch.save(self.model.state_dict(), best_path)
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'best_loss': best_loss
+                }, best_path)
                 if self.logger:
                     self.logger.info(f"Saved new best model with loss: {best_loss:.4f}")
             
             # Checkpoint last
             if (epoch + 1) % save_interval == 0 or epoch == self.epochs - 1:
                 last_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_last.pth")
-                torch.save(self.model.state_dict(), last_path)
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'best_loss': best_loss
+                }, last_path)
 
 
 def setup_logging(config):
@@ -156,14 +177,16 @@ def setup_logging(config):
     log_file = os.path.join(log_dir, f"{experiment_name}_{timestamp}.log")
     
     logger = logging.getLogger('VAETrainLogger')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     
     fh = logging.FileHandler(log_file, encoding='utf-8')
+    fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
     
     ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     
@@ -172,6 +195,7 @@ def setup_logging(config):
 def main():
     parser = argparse.ArgumentParser(description="Train VAE (Generative Model) + Contrastive Loss")
     parser.add_argument('--config', type=str, default='config/default.yaml')
+    parser.add_argument('--resume', type=str, default=None, help='Path to checkpoint to resume training')
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
@@ -252,6 +276,20 @@ def main():
         device=device,
         ckpt_prefix=ckpt_prefix
     )
+    
+    # Load checkpoint for resume if provided
+    if args.resume and os.path.isfile(args.resume):
+        logger.info(f"Loading checkpoint '{args.resume}' to resume training...")
+        checkpoint = torch.load(args.resume, map_location=device)
+        if 'model_state_dict' in checkpoint:
+            trainer.model.load_state_dict(checkpoint['model_state_dict'])
+            trainer.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            trainer.start_epoch = checkpoint['epoch'] + 1
+            trainer.best_loss = checkpoint.get('best_loss', float('inf'))
+            logger.info(f"Resumed from epoch {checkpoint['epoch']} with best_loss {trainer.best_loss:.4f}")
+        else:
+            trainer.model.load_state_dict(checkpoint)
+            logger.info("Loaded legacy checkpoint without optimizer state. Starting from epoch 0.")
     
     logger.info("Bắt đầu quá trình huấn luyện VAE + Contrastive...")
     trainer.train()

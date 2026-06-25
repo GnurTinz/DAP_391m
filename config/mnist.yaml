@@ -17,6 +17,8 @@ model:
     hidden_dims: [128, 64, 32]
   verifier:
     hidden_dims: [256, 128]
+  projector:
+    proj_dim: 128
 
 losses:
   lambda_id: 1.0
@@ -46,7 +48,7 @@ loss_schedules:
 
 training:
   epochs: 20
-  batch_size: 4
+  batch_size: 32
   num_workers: 2
   learning_rate: 0.001
   weight_decay: 0.0001
