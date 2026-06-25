@@ -19,11 +19,11 @@ def main():
     parser.add_argument('--output', type=str, default=None, help='Output image path (ghi đè YAML)')
     parser.add_argument('--num_images', type=int, default=None, help='Number of images to generate (ghi đè YAML)')
     parser.add_argument('--temperature', type=float, default=None, help='Temperature for variations mode (ghi đè YAML)')
-    parser.add_argument('--mode', type=str, choices=['unconditional', 'reconstruct', 'variations'], default=None,
-                        help='Mode sinh ảnh: unconditional, reconstruct, hoặc variations (ghi đè YAML)')
+    parser.add_argument('--mode', type=str, choices=['unconditional', 'reconstruct', 'variations', 'contrastive', 'latent_sampling'], default=None,
+                        help='Mode sinh ảnh: unconditional, reconstruct, variations, contrastive, hoặc latent_sampling (ghi đè YAML)')
     args = parser.parse_args()
     
-    with open(args.config, 'r') as f:
+    with open(args.config, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
         
     # Đọc cấu hình 'generation' từ YAML
@@ -68,11 +68,19 @@ def main():
     
     # 3. Tải dataloader nếu cần
     dataloader = None
-    if mode in ['reconstruct', 'variations']:
+    if mode in ['reconstruct', 'variations', 'contrastive', 'latent_sampling']:
         print(f"Đang tải dữ liệu để lấy mẫu gốc cho mode '{mode}'...")
         data_dir = config.get('dataset', {}).get('data_dir', 'data/MNIST')
         dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
-        dataloader = DataLoader(dataset, batch_size=num_images if mode == 'reconstruct' else 1, shuffle=True)
+        
+        if mode == 'contrastive':
+            bs = 64
+        elif mode == 'reconstruct':
+            bs = num_images
+        else:
+            bs = 1
+            
+        dataloader = DataLoader(dataset, batch_size=bs, shuffle=True)
         
     # 4. Sử dụng bộ khung chung (ImageGenerator) để sinh ảnh
     generator = ImageGenerator(model, dataloader, device)
@@ -87,6 +95,14 @@ def main():
         if args.output is None and 'output_path' not in gen_config:
             output_path = 'logs/variations.png'
         generator.generate_variations(num_variations=num_images, temperature=temperature, output_path=output_path)
+    elif mode == 'contrastive':
+        if args.output is None and 'output_path' not in gen_config:
+            output_path = 'logs/contrastive.png'
+        generator.generate_contrastive(output_path=output_path)
+    elif mode == 'latent_sampling':
+        if args.output is None and 'output_path' not in gen_config:
+            output_path = 'logs/latent_sampling.png'
+        generator.generate_from_latent(num_images=num_images, output_path=output_path)
 
 if __name__ == '__main__':
     main()

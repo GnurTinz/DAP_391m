@@ -76,11 +76,17 @@ Dự án sử dụng các file `.yaml` trong thư mục `config/` (VD: `default.
   - `pretrained`: Sử dụng trọng số ImageNet hay không (`true` / `false`).
 - `decoder`:
   - `use_decoder`: Kích hoạt nhánh giải mã để tái tạo ảnh (Reconstruction) nhằm giữ chi tiết không gian cục bộ (`true` / `false`).
+  - `skip_dropout`: Tỷ lệ ngắt kênh (Spatial Dropout) ngẫu nhiên trên các đường nối tắt (Skip-Connections) của U-Net. Thêm vào để ép Decoder không quá lười biếng mà phải dùng không gian $z$ (Ví dụ: `0.2`).
 - `projector`:
   - `proj_dim`: Số chiều nén của nhánh Light MLP dùng riêng để tính Supervised Contrastive Loss (Ví dụ: `64`).
 
 ### 4. `generation` (Cấu hình tự động sinh ảnh từ file generate_images.py)
-- `mode`: Chế độ sinh ảnh (`unconditional`, `reconstruct`, hoặc `variations`).
+- `mode`: Chế độ sinh ảnh (`unconditional`, `reconstruct`, `variations`, `contrastive`, hoặc `latent_sampling`).
+  - `unconditional`: Sinh ảnh vô điều kiện từ nhiễu.
+  - `reconstruct`: Tái tạo N ảnh.
+  - `variations`: Trích xuất 1 ảnh và tạo ra nhiều biến thể bằng cách nhiễu hóa nhỏ.
+  - `contrastive`: Tự động tìm 3 ảnh (Anchor, Positive, Negative) và tái tạo để đối chiếu.
+  - `latent_sampling`: Trích xuất mu, sigma của 1 ảnh duy nhất, sau đó sinh một dải các ảnh "giống" (nhiễu nhỏ quanh mu) và "khác" (bị đẩy ra xa khỏi mu).
 - `num_images`: Số lượng ảnh sẽ sinh ra hoặc tái tạo.
 - `temperature`: Nhiệt độ khuếch đại không gian ẩn z (dành riêng cho mode `variations`, VD: `1.5` để ép sai khác mạnh).
 - `output_path`: Đường dẫn lưu trữ ảnh đầu ra (VD: `logs/mnist_variations.png`).

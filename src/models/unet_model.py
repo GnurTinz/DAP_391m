@@ -69,6 +69,7 @@ class UNetPalmModel(BaseModel):
         self.latent_dim = config.get('encoder', {}).get('latent_dim', 128)
         self.proj_dim = config.get('projector', {}).get('proj_dim', 128)
         self.use_decoder = config.get('decoder', {}).get('use_decoder', True)
+        self.skip_dropout_rate = config.get('decoder', {}).get('skip_dropout', 0.2)
         
         # --- ENCODER PATH ---
         self.inc = DoubleConv(3, 64)
@@ -103,6 +104,7 @@ class UNetPalmModel(BaseModel):
                 nn.Conv2d(64, 3, kernel_size=1),
                 nn.Tanh() # Đưa về [-1, 1]
             )
+            self.skip_dropout = nn.Dropout2d(p=self.skip_dropout_rate)
 
     def reparameterize(self, mu, logvar, temperature=1.0):
         std = torch.exp(0.5 * logvar)
@@ -141,9 +143,15 @@ class UNetPalmModel(BaseModel):
             z_dec = z_dec.view(-1, 512, self.bottleneck_size, self.bottleneck_size)
             
             # Kết hợp với skip connections từ encoder
-            u1 = self.up1(z_dec, x3)
-            u2 = self.up2(u1, x2)
-            u3 = self.up3(u2, x1)
+            # Áp dụng Dropout2d để triệt tiêu ngẫu nhiên một số kênh đặc trưng (feature maps)
+            # Buộc Decoder phải phụ thuộc vào z để giải mã, chống Posterior Collapse
+            d_x3 = self.skip_dropout(x3)
+            d_x2 = self.skip_dropout(x2)
+            d_x1 = self.skip_dropout(x1)
+            
+            u1 = self.up1(z_dec, d_x3)
+            u2 = self.up2(u1, d_x2)
+            u3 = self.up3(u2, d_x1)
             
             x_hat = self.outc(u3)
             
