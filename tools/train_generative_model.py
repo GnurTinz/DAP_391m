@@ -236,6 +236,11 @@ def main():
     logger.info("=== MODEL ARCHITECTURE ===")
     logger.info(model)
     
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info(f"Total Parameters: {total_params:,}")
+    logger.info(f"Trainable Parameters: {trainable_params:,}")
+    
     # Train qua GenerativeTrainer (Kế thừa từ Base Trainer)
     ckpt_prefix = f"vae_con_model_{exp_name}_{timestamp}"
     trainer = GenerativeTrainer(

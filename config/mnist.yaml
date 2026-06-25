@@ -10,6 +10,7 @@ model:
     latent_dim: 128
     pretrained: false
   decoder:
+    type: "cnn_base"
     use_decoder: true
     latent_dim: 128
     image_size: [32, 32]

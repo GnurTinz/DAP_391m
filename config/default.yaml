@@ -10,10 +10,11 @@ model:
     latent_dim: 256
     pretrained: true
   decoder:
+    type: "cnn_base"
     use_decoder: true
     latent_dim: 256
     image_size: [128, 128]
-    hidden_dims: [256, 128, 64, 32]
+    hidden_dims: [128, 64, 32]
   verifier:
     hidden_dims: [512, 256, 128]
 
