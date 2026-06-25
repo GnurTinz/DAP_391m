@@ -1,105 +1,114 @@
 # Uncertainty-Aware Probabilistic PalmPrint Verification for Open-Set Attendance
 
-Dự án nghiên cứu và phát triển hệ thống điểm danh bằng lòng bàn tay (**PalmPrint Attendance**) hướng tới bối cảnh mở (**Open-Set Biometric Verification**). Hệ thống không chỉ nhận diện chính xác danh tính các thành viên đã đăng ký (Closed-set), mà còn tối ưu hóa khả năng từ chối người dùng chưa hợp lệ (Unknown), giảm tỷ lệ nhận nhầm (**False Accept Rate - FAR**), và tự động ước lượng độ tin cậy của ảnh chụp thông qua cơ chế phân phối không gian ẩn xác suất (**Probabilistic Latent Space**).
+Dự án nghiên cứu và phát triển hệ thống điểm danh bằng lòng bàn tay (**PalmPrint Attendance**) hướng tới bối cảnh mở (**Open-Set Biometric Verification**). Hệ thống không chỉ nhận diện chính xác danh tính các thành viên đã đăng ký (Closed-set), mà còn tối ưu hóa khả năng từ chối người dùng chưa hợp lệ (Unknown), giảm tỷ lệ nhận nhầm (**False Accept Rate - FAR**), và tự động ước lượng độ tin cậy của ảnh thông qua cơ chế phân phối không gian ẩn xác suất (**Probabilistic Latent Space**).
 
 ---
 
 ## 📌 Các Tính Năng Cốt Lõi (Key Features)
 
-1. **Định Vị & Trích Chọn ROI Tự Động**: Tích hợp giải pháp **MediaPipe Hand Landmarker** (`hand_landmarker.task`) để định vị các điểm mốc bàn tay chuẩn xác, căn chỉnh khung hình và cắt vùng lòng bàn tay (ROI) ổn định dưới các điều kiện góc chụp khác nhau.
-2. **Biểu Diễn Không Gian Ẩn Xác Suất (Probabilistic Embedding)**: Mỗi ảnh lòng bàn tay không bị ép vào một vector cố định, mà được mô hình hóa bằng một phân phối Gaussian:
+1. **Định Vị & Trích Chọn ROI Tự Động**: Tích hợp giải pháp **MediaPipe Hand Landmarker** để cắt vùng lòng bàn tay (ROI) ổn định dưới các góc chụp khác nhau.
+2. **Biểu Diễn Không Gian Ẩn Xác Suất (Probabilistic Embedding)**: Mỗi ảnh không bị ép vào một vector cố định, mà được mô hình hóa bằng một phân phối Gaussian:
    $$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$
-   - $\boldsymbol{\mu}$: Đại diện cho đặc trưng định danh (Identity signal).
-   - $\boldsymbol{\sigma}$: Biểu thị độ bất định (Uncertainty) hoặc độ mơ hồ của mẫu ảnh đầu vào (chất lượng ảnh kém, mờ, nhiễu).
-3. **Chiến Lược Học Tương Phản Có Giám Sát (Supervised Contrastive Learning)**: Tối ưu không gian đặc trưng bằng cách kéo gần các mẫu cùng danh tính và đẩy xa các mẫu khác danh tính, đặc biệt tập trung khai thác các mẫu khó phân biệt (**Hard Negatives**).
-4. **Cơ Chế Xác Thực Hai Tầng (Two-Stage Verification)**:
-   - **Tầng 1 (Retrieval)**: Truy vấn nhanh Top-K ứng viên có khoảng cách embedding gần nhất trong Database.
-   - **Tầng 2 (Verification & Reject)**: Sử dụng mạng MLP Verifier kết hợp thông tin đặc trưng $\boldsymbol{\mu}$ và độ bất định $\boldsymbol{\sigma}$ để đưa ra quyết định cuối cùng dựa trên Threshold (Ngưỡng điểm) + Margin (Khoảng cách an toàn) + Uncertainty Bound (Ngưỡng bất định tối đa).
+   - $\boldsymbol{\mu}$: Đặc trưng định danh (Identity signal).
+   - $\boldsymbol{\sigma}$: Độ bất định (Uncertainty) hoặc độ mơ hồ của mẫu ảnh đầu vào.
+3. **Chiến Lược Học Tương Phản (Supervised Contrastive Learning)**: Tối ưu không gian đặc trưng bằng cách kéo gần các mẫu cùng danh tính và đẩy xa mẫu khác danh tính.
+4. **Hydra Configuration**: Toàn bộ hệ thống được quản lý cấu hình bằng siêu khung `Hydra`, cho phép thay đổi cấu hình linh hoạt qua file YAML và tham số dòng lệnh mà không cần sửa code.
+5. **Auto Logging & Versioning**: Tích hợp chặt chẽ với PyTorch Lightning, mọi kết quả huấn luyện, test, sinh ảnh, file checkpoint và ảnh preview sau mỗi Epoch đều được quản lý sạch sẽ và tự động trong thư mục `logs/version_X`.
 
 ---
 
 ## 📂 Cấu Trúc Thư Mục Dự Án (Project Structure)
 
-Dự án được tổ chức chuẩn hóa, phân tách rõ ràng giữa cấu hình, mã nguồn xử lý, thực nghiệm và kiểm thử:
-
 ```text
 PALM/
-├── .vscode/                 # Cấu hình môi trường làm việc trên VS Code
-├── config/                  # Quản lý cấu hình hệ thống và siêu tham số
-│   ├── default.yaml         # File cấu hình chung cho Pipeline (Augmentation, Learning Rate,...)
-│   └── hand_landmarker.task # Model pre-trained MediaPipe cho tác vụ Hand Landmarking
-├── data/                    # Thư mục lưu trữ dữ liệu ảnh thô và dữ liệu đã tiền xử lý
-├── implement-idea/          # Nơi lưu trữ tài liệu phân tích kiến trúc và sơ đồ pipeline
-│   ├── Drawing...excalidraw # Bản vẽ thiết kế luồng hệ thống
-│   └── pipeline-general.jpg # Sơ đồ tổng quan kiến trúc mô hình
-├── logs/                    # Lưu vết quá trình huấn luyện và kiểm thử mô hình
-├── notebooks/               # Thư mục chứa các file Jupyter Notebook để thực nghiệm nhanh
-│   └── EDA.ipynb            # Phân tích khám phá dữ liệu (Exploratory Data Analysis)
-├── papers/                  # Tài liệu tham khảo và các bài báo khoa học liên quan
-├── src/                     # Mã nguồn chính của dự án (Source Code)
-│   ├── processing/          # Chương trình nhanh cho việc tạo và xử lí dữ liệu
-│   └── script/              # Tập hợp các kịch bản tạo dữ liệu huấn luyện
-│       ├── __init__.py
-│       ├── script1.py       
-│       ├── script2.py       
-│       ├── script3.py       
-│       └── script4.py       
-├── tests/                   # Bộ mã nguồn kiểm thử tự động (Unit Test)
-├── .gitignore               # Chỉ định các tệp tin và thư mục không đẩy lên Git
-├── README.md                # Tài liệu hướng dẫn dự án này
-└── requirements.txt         # Danh sách thư viện và dependencies cần thiết
+├── config/                  # Quản lý cấu hình bằng Hydra (cấu trúc module)
+│   ├── dataset/             # Các kịch bản dataset (mnist, own_split_hand, own_split_ratio)
+│   ├── model/               # Các kiến trúc model (unet, default, unet_mock)
+│   ├── training/            # Cấu hình siêu tham số, optimizer, epochs
+│   └── config.yaml          # File gốc điều phối toàn bộ cấu hình
+├── data/                    # Nơi chứa ảnh gốc hoặc đã qua tiền xử lý
+├── logs/                    # Thư mục hệ sinh thái Tracking
+│   ├── version_0/           # Toàn bộ thông tin (config, checkpoints, test_results) của đợt chạy 0
+│   ├── version_1/           # Đợt chạy 1...
+│   └── unversioned_results/ # Nơi chứa kết quả các đoạn test chạy mù (không dùng model đã train)
+├── src/                     # Mã nguồn lõi (Core Engine)
+│   ├── datasets/            # Logic load ảnh, dataloader, sampler
+│   ├── engine/              # LightningModule, các file core dùng để train/test
+│   ├── losses/              # Các hàm mục tiêu (KL, Contrastive, Reconstruction)
+│   ├── models/              # Kiến trúc mạng lưới (UNet, Backbone, Verifier)
+│   └── processing/          # Script xử lý trích xuất điểm mốc bàn tay
+├── tools/                   # Các công cụ tiện ích có thể chạy trực tiếp
+│   ├── train_lightning.py   # Lệnh chính để huấn luyện mô hình
+│   ├── test_pipeline.py     # Lệnh đánh giá mô hình (Metrics, Thresholding)
+│   ├── generate_images.py   # Sinh/tái tạo ảnh từ mô hình (tạo biến thể, sample...)
+│   ├── visualize_gradients.py # Trực quan hóa dòng chảy gradient của mạng
+│   └── finding_represent.py # Mô phỏng tìm vector r chuẩn tối ưu cho Open-set (Test-Time Opt)
+├── requirements.txt         # File cấu hình thư viện tinh gọn
+└── README.md                # Tài liệu hướng dẫn bạn đang đọc
 ```
 
 ---
 
-## ⚙️ Cấu Hình Hệ Thống (YAML Configuration)
+## 🚀 Hướng Dẫn Cài Đặt (Installation)
 
-Dự án sử dụng các file `.yaml` trong thư mục `config/` (VD: `default.yaml`, `mnist_unet.yaml`) để quản lý linh hoạt toàn bộ siêu tham số. Dưới đây là giải thích chi tiết các cấu hình khả dĩ:
+1. Cài đặt Python (khuyên dùng Python 3.9+).
+2. Tải mã nguồn về và cài đặt các thư viện lõi:
+```bash
+pip install -r requirements.txt
+```
 
-### 1. `dataset` (Cấu hình dữ liệu)
-- `data_dir`: Đường dẫn đến thư mục chứa dữ liệu gốc (VD: `data/MNIST` hoặc `data/Palmprint`).
-- `image_size`: Kích thước ảnh đầu vào của mạng, ví dụ `[128, 128]` (Palmprint) hoặc `[32, 32]` (MNIST).
-- `batch_size`: Kích thước batch huấn luyện thông thường.
-- `num_workers`: Số lượng luồng xử lý song song để tải dữ liệu (Dataloader workers).
+---
 
-### 2. `sampler` (Cấu hình lấy mẫu dữ liệu)
-- `type`: Chiến lược bốc dữ liệu (VD: `pk_sampler` đặc biệt tối ưu cho Contrastive Learning).
-- `p`: Số lượng danh tính (Identities / Classes) trong một batch.
-- `k`: Số lượng mẫu (Samples) của mỗi danh tính trong batch.
- *(Ví dụ: p=16, k=4 nghĩa là mỗi batch có 16 người, mỗi người 4 ảnh -> Tổng Batch Size = 64)*
+## ⚡ Hướng Dẫn Sử Dụng (Usage)
 
-### 3. `model` (Cấu hình kiến trúc mạng)
-- `type`: Lõi kiến trúc (`default` cho Probabilistic VAE cơ bản, hoặc `unet` cho Probabilistic U-Net với Skip-connections).
-- `encoder`:
-  - `backbone`: Kiến trúc trích xuất đặc trưng (VD: `resnet18`, `resnet50`, hoặc `mock` để test nhẹ).
-  - `latent_dim`: Số chiều không gian ẩn $\mathbf{z}$ (Ví dụ: `128`).
-  - `pretrained`: Sử dụng trọng số ImageNet hay không (`true` / `false`).
-- `decoder`:
-  - `use_decoder`: Kích hoạt nhánh giải mã để tái tạo ảnh (Reconstruction) nhằm giữ chi tiết không gian cục bộ (`true` / `false`).
-  - `skip_dropout`: Tỷ lệ ngắt kênh (Spatial Dropout) ngẫu nhiên trên các đường nối tắt (Skip-Connections) của U-Net. Thêm vào để ép Decoder không quá lười biếng mà phải dùng không gian $z$ (Ví dụ: `0.2`).
-- `projector`:
-  - `proj_dim`: Số chiều nén của nhánh Light MLP dùng riêng để tính Supervised Contrastive Loss (Ví dụ: `64`).
+Dự án sử dụng Hydra làm framework cấu hình chính. Cú pháp chạy chung là: 
+`python tools/script.py [tham_số=giá_trị]`
 
-### 4. `generation` (Cấu hình tự động sinh ảnh từ file generate_images.py)
-- `mode`: Chế độ sinh ảnh (`unconditional`, `reconstruct`, `variations`, `contrastive`, hoặc `latent_sampling`).
-  - `unconditional`: Sinh ảnh vô điều kiện từ nhiễu.
-  - `reconstruct`: Tái tạo N ảnh.
-  - `variations`: Trích xuất 1 ảnh và tạo ra nhiều biến thể bằng cách nhiễu hóa nhỏ.
-  - `contrastive`: Tự động tìm 3 ảnh (Anchor, Positive, Negative) và tái tạo để đối chiếu.
-  - `latent_sampling`: Trích xuất mu, sigma của 1 ảnh duy nhất, sau đó sinh một dải các ảnh "giống" (nhiễu nhỏ quanh mu) và "khác" (bị đẩy ra xa khỏi mu).
-- `num_images`: Số lượng ảnh sẽ sinh ra hoặc tái tạo.
-- `temperature`: Nhiệt độ khuếch đại không gian ẩn z (dành riêng cho mode `variations`, VD: `1.5` để ép sai khác mạnh).
-- `output_path`: Đường dẫn lưu trữ ảnh đầu ra (VD: `logs/mnist_variations.png`).
+### 1. Huấn Luyện Mô Hình (Training)
+Lệnh mặc định sẽ tải toàn bộ cấu hình từ `config/config.yaml`.
+```bash
+python tools/train_lightning.py
+```
 
-### 5. `losses` (Trọng số cân bằng hàm mất mát)
-- `lambda_rec`: Trọng số của lỗi tái tạo ảnh (Reconstruction Loss).
-- `lambda_con`: Trọng số ép cụm danh tính (Supervised Contrastive Loss).
-- `beta_kl`: Trọng số ép không gian ẩn tuân theo phân phối chuẩn N(0, 1) (KL Divergence).
-- `lambda_unc`: Trọng số kiểm soát độ bất định (Uncertainty Penalty) không quá lớn/nhỏ.
+Bạn có thể thay đổi ngay lập tức Dataset và Model mà không cần mở file:
+```bash
+# Huấn luyện trên OwnDataset (Chế độ chia theo Hand: tay trái train, tay phải val) với kiến trúc UNet
+python tools/train_lightning.py dataset=own_split_hand model=unet
 
-### 6. `training` (Cấu hình vòng đời huấn luyện)
-- `epochs`: Tổng số vòng lặp huấn luyện.
-- `learning_rate`: Tốc độ học của Optimizer (VD: `1e-3` hoặc `0.001`).
-- `weight_decay`: Hệ số tiêu biến trọng số, chống Overfitting (VD: `1e-4`).
-- `log_interval`: Chu kỳ in log ra Terminal và TensorBoard (tính theo số batch).
-- `save_dir`: Thư mục tự động lưu lại các file trọng số `.pth` (Checkpoint).
+# Huấn luyện theo tỷ lệ random gộp tay (Ratio) với backbone dạng mock test
+python tools/train_lightning.py dataset=own_split_ratio model=unet_mock
+```
+
+Khi chạy, hệ thống sẽ tự động sinh ra thư mục `logs/version_X`. Thư mục này chứa:
+- `config_backup.yaml`: Lưu lại chính xác thông số bạn đã dùng để train.
+- `checkpoints/best.ckpt` và `last.ckpt`: Các trọng số mô hình lưu tự động.
+- `epoch_samples/`: Tự động sinh ảnh đối chiếu sau mỗi Epoch.
+- Hệ sinh thái tracking của TensorBoard.
+
+### 2. Sinh và Tái Tạo Ảnh (Image Generation)
+Lệnh sinh ảnh có thể lấy trực tiếp checkpoint tương ứng trong `version_X`. Hệ thống sẽ xả kết quả ảnh sinh ra vào thẳng thư mục `logs/version_X/generated/`.
+
+```bash
+python tools/generate_images.py checkpoint="logs/version_0/checkpoints/best.ckpt" generation.mode="reconstruct"
+```
+*(Các chế độ sinh ảnh: `reconstruct`, `variations`, `contrastive`, `latent_sampling`)*
+
+### 3. Đánh Giá Đường Ống (Test Pipeline)
+Công cụ phân tích và đo lường hệ thống tự động, chạy ra các file logs log và `.csv` để đánh giá Threshold.
+```bash
+python tools/test_pipeline.py checkpoint="logs/version_0/checkpoints/best.ckpt"
+```
+Kết quả CSV và Text Logging sẽ nằm rải trong thư mục `logs/version_0/test_results/`.
+
+### 4. Tìm vector đại diện tối ưu (TTO - Test Time Optimization)
+Để test thuật toán tối ưu hóa vector đại diện trên tập mù:
+```bash
+python tools/finding_represent.py checkpoint="logs/version_0/checkpoints/best.ckpt" steps=100
+```
+
+### 5. Phân Tích Dòng Chảy Gradient
+Xem cấu trúc mạng và luồng đi của gradient để debug hiện tượng mất mát (vanishing gradient):
+```bash
+python tools/visualize_gradients.py
+```
+Kết quả sơ đồ mạn nhện gradient sẽ xuất hiện dưới dạng `.png`.
