@@ -79,13 +79,19 @@ Dự án sử dụng các file `.yaml` trong thư mục `config/` (VD: `default.
 - `projector`:
   - `proj_dim`: Số chiều nén của nhánh Light MLP dùng riêng để tính Supervised Contrastive Loss (Ví dụ: `64`).
 
-### 4. `losses` (Trọng số cân bằng hàm mất mát)
+### 4. `generation` (Cấu hình tự động sinh ảnh từ file generate_images.py)
+- `mode`: Chế độ sinh ảnh (`unconditional`, `reconstruct`, hoặc `variations`).
+- `num_images`: Số lượng ảnh sẽ sinh ra hoặc tái tạo.
+- `temperature`: Nhiệt độ khuếch đại không gian ẩn z (dành riêng cho mode `variations`, VD: `1.5` để ép sai khác mạnh).
+- `output_path`: Đường dẫn lưu trữ ảnh đầu ra (VD: `logs/mnist_variations.png`).
+
+### 5. `losses` (Trọng số cân bằng hàm mất mát)
 - `lambda_rec`: Trọng số của lỗi tái tạo ảnh (Reconstruction Loss).
 - `lambda_con`: Trọng số ép cụm danh tính (Supervised Contrastive Loss).
 - `beta_kl`: Trọng số ép không gian ẩn tuân theo phân phối chuẩn N(0, 1) (KL Divergence).
 - `lambda_unc`: Trọng số kiểm soát độ bất định (Uncertainty Penalty) không quá lớn/nhỏ.
 
-### 5. `training` (Cấu hình vòng đời huấn luyện)
+### 6. `training` (Cấu hình vòng đời huấn luyện)
 - `epochs`: Tổng số vòng lặp huấn luyện.
 - `learning_rate`: Tốc độ học của Optimizer (VD: `1e-3` hoặc `0.001`).
 - `weight_decay`: Hệ số tiêu biến trọng số, chống Overfitting (VD: `1e-4`).

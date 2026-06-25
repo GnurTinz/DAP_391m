@@ -14,17 +14,25 @@ def main():
     parser = argparse.ArgumentParser(description="Generate or Sample (Reconstruct) images from trained model")
     parser.add_argument('--config', type=str, default='config/default.yaml', help='Path to config file')
     parser.add_argument('--checkpoint', type=str, default='', help='Path to model checkpoint')
-    parser.add_argument('--output', type=str, default='logs/generated_samples.png', help='Output image path')
-    parser.add_argument('--num_images', type=int, default=8, help='Number of images to generate/visualize')
-    parser.add_argument('--temperature', type=float, default=1.0, help='Temperature to scale the latent noise (for variations mode)')
     
-    # Mode sinh ảnh: unconditional, reconstruct, variations
-    parser.add_argument('--mode', type=str, choices=['unconditional', 'reconstruct', 'variations'], default='variations',
-                        help='Mode sinh ảnh: unconditional (từ nhiễu z), reconstruct (nén và giải nén) hoặc variations (sinh biến thể 1 ảnh)')
+    # Cấu hình qua tham số CLI sẽ ghi đè (overwrite) cấu hình trong YAML
+    parser.add_argument('--output', type=str, default=None, help='Output image path (ghi đè YAML)')
+    parser.add_argument('--num_images', type=int, default=None, help='Number of images to generate (ghi đè YAML)')
+    parser.add_argument('--temperature', type=float, default=None, help='Temperature for variations mode (ghi đè YAML)')
+    parser.add_argument('--mode', type=str, choices=['unconditional', 'reconstruct', 'variations'], default=None,
+                        help='Mode sinh ảnh: unconditional, reconstruct, hoặc variations (ghi đè YAML)')
     args = parser.parse_args()
     
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
+        
+    # Đọc cấu hình 'generation' từ YAML
+    gen_config = config.get('generation', {})
+    mode = args.mode if args.mode is not None else gen_config.get('mode', 'reconstruct')
+    num_images = args.num_images if args.num_images is not None else gen_config.get('num_images', 8)
+    temperature = args.temperature if args.temperature is not None else gen_config.get('temperature', 1.0)
+    output_path = args.output if args.output is not None else gen_config.get('output_path', 'logs/generated_samples.png')
+
         
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Sử dụng device: {device}")
@@ -42,9 +50,9 @@ def main():
     if model_type == 'unet':
         model = UNetPalmModel(model_config).to(device)
         # U-Net bắt buộc dùng reconstruct hoặc variations
-        if args.mode == 'unconditional':
+        if mode == 'unconditional':
             print("CẢNH BÁO: Mô hình U-Net không hỗ trợ mode 'unconditional'. Tự động chuyển sang 'variations'.")
-            args.mode = 'variations'
+            mode = 'variations'
     else:
         model = ProbabilisticPalmModel(model_config).to(device)
         
@@ -60,25 +68,25 @@ def main():
     
     # 3. Tải dataloader nếu cần
     dataloader = None
-    if args.mode in ['reconstruct', 'variations']:
-        print(f"Đang tải dữ liệu để lấy mẫu gốc cho mode '{args.mode}'...")
+    if mode in ['reconstruct', 'variations']:
+        print(f"Đang tải dữ liệu để lấy mẫu gốc cho mode '{mode}'...")
         data_dir = config.get('dataset', {}).get('data_dir', 'data/MNIST')
         dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
-        dataloader = DataLoader(dataset, batch_size=args.num_images if args.mode == 'reconstruct' else 1, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=num_images if mode == 'reconstruct' else 1, shuffle=True)
         
     # 4. Sử dụng bộ khung chung (ImageGenerator) để sinh ảnh
     generator = ImageGenerator(model, dataloader, device)
     
-    if args.mode == 'reconstruct':
-        if args.output == 'logs/generated_samples.png':
-            args.output = 'logs/reconstructed.png'
-        generator.generate_reconstruction(num_images=args.num_images, output_path=args.output)
-    elif args.mode == 'unconditional':
-        generator.generate_unconditional(num_images=args.num_images, latent_dim=latent_dim, output_path=args.output)
-    elif args.mode == 'variations':
-        if args.output == 'logs/generated_samples.png':
-            args.output = 'logs/variations.png'
-        generator.generate_variations(num_variations=args.num_images, temperature=args.temperature, output_path=args.output)
+    if mode == 'reconstruct':
+        if args.output is None and 'output_path' not in gen_config:
+            output_path = 'logs/reconstructed.png'
+        generator.generate_reconstruction(num_images=num_images, output_path=output_path)
+    elif mode == 'unconditional':
+        generator.generate_unconditional(num_images=num_images, latent_dim=latent_dim, output_path=output_path)
+    elif mode == 'variations':
+        if args.output is None and 'output_path' not in gen_config:
+            output_path = 'logs/variations.png'
+        generator.generate_variations(num_variations=num_images, temperature=temperature, output_path=output_path)
 
 if __name__ == '__main__':
     main()

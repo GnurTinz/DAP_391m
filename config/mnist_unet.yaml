@@ -21,6 +21,12 @@ model:
   projector:
     proj_dim: 64
 
+generation:
+  mode: "variations"
+  num_images: 8
+  temperature: 1.5
+  output_path: "logs/mnist_variations.png"
+
 losses:
   lambda_id: 1.0
   lambda_con: 0.5

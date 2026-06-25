@@ -21,6 +21,12 @@ model:
   projector:
     proj_dim: 128
 
+generation:
+  mode: "unconditional"
+  num_images: 16
+  temperature: 1.0
+  output_path: "logs/generated_samples.png"
+
 losses:
   lambda_id: 1.0
   lambda_con: 0.5
