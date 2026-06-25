@@ -1,0 +1,12 @@
+type: "probabilistic"
+encoder:
+  backbone: "mock"
+  latent_dim: 128
+  pretrained: false
+decoder:
+  use_decoder: true
+  image_size: ${dataset.image_size}
+verifier:
+  hidden_dims: [128]
+projector:
+  proj_dim: 64

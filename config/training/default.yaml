@@ -1,0 +1,17 @@
+epochs: 30
+batch_size: 64
+num_workers: 2
+learning_rate: 0.0002
+weight_decay: 0.0001
+optimizer: "AdamW"
+scheduler: "CosineAnnealingLR"
+log_interval: 10
+save_interval: 1
+use_sampler: true
+sampler_type: "pk_sampler"
+sampler_p: 8
+sampler_k: 4
+
+seed: 42
+accelerator: "auto" # options: "auto", "cpu", "gpu", "tpu", "mps"
+devices: 1 # number of devices (GPUs/TPUs) to use

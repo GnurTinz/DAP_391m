@@ -1,0 +1,4 @@
+name: "MNISTDataset"
+data_dir: "data/MNIST"
+image_size: [32, 32]
+open_set_ratio: 0.0

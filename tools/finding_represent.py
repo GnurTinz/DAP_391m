@@ -1,7 +1,7 @@
 import os
 import sys
-import argparse
-import yaml
+import hydra
+from omegaconf import DictConfig, OmegaConf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,16 +18,13 @@ if sys.stdout.encoding != 'utf-8':
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.represent import optimize_representation
 
-def main():
-    parser = argparse.ArgumentParser(description="Find optimal representation r (Test-Time Optimization)")
-    parser.add_argument('--config', type=str, default='config/mnist.yaml')
-    parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint (optional for dummy test)')
-    parser.add_argument('--samples', type=int, default=512, help='Number of pos/neg samples (N)')
-    parser.add_argument('--steps', type=int, default=50, help='Number of optimization steps (T)')
-    args = parser.parse_args()
-
-    with open(args.config, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
+@hydra.main(version_base=None, config_path="../config", config_name="config")
+def main(cfg: DictConfig):
+    config = OmegaConf.to_container(cfg, resolve=True)
+    
+    checkpoint_path = config.get('checkpoint', '')
+    samples = config.get('samples', 512)
+    steps = config.get('steps', 50)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Sử dụng device: {device}")
@@ -36,13 +33,13 @@ def main():
     model = ProbabilisticPalmModel(config).to(device)
     
     # Load checkpoint nếu có
-    if args.checkpoint and os.path.exists(args.checkpoint):
-        print(f"Đang tải checkpoint từ {args.checkpoint}...")
-        checkpoint = torch.load(args.checkpoint, map_location=device)
-        if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        print(f"Đang tải checkpoint từ {checkpoint_path}...")
+        checkpoint_data = torch.load(checkpoint_path, map_location=device)
+        if 'model_state_dict' in checkpoint_data:
+            model.load_state_dict(checkpoint_data['model_state_dict'])
         else:
-            model.load_state_dict(checkpoint)
+            model.load_state_dict(checkpoint_data)
         print("Tải checkpoint thành công.")
     else:
         print("Cảnh báo: Không có checkpoint nào được cung cấp. Chạy với mô hình khởi tạo ngẫu nhiên để Test!")
@@ -57,8 +54,8 @@ def main():
         image=dummy_image,
         config=config,
         device=device,
-        num_samples=args.samples,
-        steps=args.steps,
+        num_samples=samples,
+        steps=steps,
         lr=0.01,
         alpha=0.1
     )

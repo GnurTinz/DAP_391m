@@ -1,0 +1,13 @@
+type: "unet"
+encoder:
+  backbone: "cnn" # Hoặc 'mock'
+  hidden_dims: [32, 64, 128]
+  latent_dim: 128
+decoder:
+  use_decoder: true
+  skip_dropout: 0.2
+  image_size: ${dataset.image_size} # Interpolate from dataset config
+verifier:
+  hidden_dims: [256, 128]
+projector:
+  proj_dim: 64

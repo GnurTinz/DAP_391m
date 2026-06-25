@@ -1,0 +1,26 @@
+defaults:
+  - dataset: mnist
+  - model: unet
+  - training: default
+  - losses: default
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+checkpoint: ""
+output: "" # Để trống để Python script tự động map vào version_X hoặc logs/unversioned_results
+seed: 42
+
+generation:
+  mode: "latent_sampling"
+  num_images: 8
+  temperature: 10
+  output_path: "" # Để trống để lưu vào version_X/generated/
+
+logging:
+  log_dir: "logs"
+  experiment_name: ""
+  enable_tensorboard: true

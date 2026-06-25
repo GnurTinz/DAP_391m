@@ -1,0 +1,4 @@
+name: "PalmPrintDataset"
+data_dir: "data/PolyU"
+image_size: [128, 128]
+open_set_ratio: 0.0

@@ -1,0 +1,13 @@
+type: "unet"
+encoder:
+  backbone: "mock"
+  hidden_dims: [16, 32]
+  latent_dim: 64
+decoder:
+  use_decoder: true
+  skip_dropout: 0.1
+  image_size: ${dataset.image_size}
+verifier:
+  hidden_dims: [128]
+projector:
+  proj_dim: 32

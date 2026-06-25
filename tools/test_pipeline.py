@@ -1,6 +1,6 @@
 import os
-import argparse
-import yaml
+import hydra
+from omegaconf import DictConfig, OmegaConf
 import logging
 import random
 import csv
@@ -269,24 +269,26 @@ def run_pipeline_inference(palm_model, global_verifier, query_loader, gallery, d
     logger.info(f"False Rejects (FRR): {false_rejects}")
     logger.info(f"True Rejects (Unknowns): {true_rejects}")
     
-def main():
-    parser = argparse.ArgumentParser(description="End-to-End Test Pipeline for PalmPrint")
-    parser.add_argument('--config', type=str, default='config/default.yaml', help='Path to config file')
-    parser.add_argument('--checkpoint', type=str, default=None, help='Path to model checkpoint')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed')
-    parser.add_argument('--output', type=str, default='logs/results', help='Output directory for CSV')
-    args = parser.parse_args()
+@hydra.main(version_base=None, config_path="../config", config_name="config")
+def main(cfg: DictConfig):
+    config = OmegaConf.to_container(cfg, resolve=True)
+    
+    seed = config.get('seed', 42)
+    checkpoint_path = config.get('checkpoint', '')
+    
+    import re
+    version_dir = "logs/unversioned_results"
+    if checkpoint_path:
+        match = re.search(r'(.*[\\/]version_\d+)', checkpoint_path.replace('\\', '/'))
+        if match:
+            version_dir = match.group(1)
+            
+    output_dir = os.path.join(version_dir, 'test_results')
+    os.makedirs(output_dir, exist_ok=True)
 
     # Set seed
-    set_seed(args.seed)
+    set_seed(seed)
     
-    # Load config
-    if os.path.exists(args.config):
-        with open(args.config, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-    else:
-        config = {}
-        
     # Set default test configs if not present
     if 'testing' not in config:
         config['testing'] = {
@@ -297,16 +299,15 @@ def main():
         }
 
     # Setup Logging
-    log_dir = config.get('logging', {}).get('log_dir', 'logs/experiments')
-    logger, log_file, timestamp = setup_logger(log_dir, 'test_pipeline')
-    logger.info(f"Random seed set to: {args.seed}")
+    logger, log_file, timestamp = setup_logger(output_dir, 'test_pipeline')
+    logger.info(f"Random seed set to: {seed}")
     logger.info(f"Logs will be saved to: {log_file}")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info(f"Using device: {device}")
 
     # Load Models
-    palm_model = load_models(config, device, logger, args.checkpoint)
+    palm_model = load_models(config, device, logger, checkpoint_path)
     
     # Datasets setup
     # In a real scenario, we should have a gallery dataloader and a query dataloader
@@ -351,8 +352,8 @@ def main():
     query_loader = DataLoader(query_subset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     # Setup CSV Writer
-    os.makedirs(args.output, exist_ok=True)
-    csv_path = os.path.join(args.output, f"test_results_{timestamp}.csv")
+    os.makedirs(output_dir, exist_ok=True)
+    csv_path = os.path.join(output_dir, f"test_results_{timestamp}.csv")
     csv_file = open(csv_path, mode='w', newline='', encoding='utf-8')
     csv_writer = csv.writer(csv_file)
     csv_writer.writerow(['Query_ID', 'True_Label', 'Predicted_Label', 'Best_Score', 'Uncertainty', 'Decision', 'Reason', 'Is_Correct'])

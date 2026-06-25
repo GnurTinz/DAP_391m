@@ -80,3 +80,7 @@ urllib3==2.7.0
 Werkzeug @ file:///C:/Users/task_177249115096347/croot/werkzeug_1772491250650/work
 zope.event==6.2
 zope.interface==8.5
+
+pytorch-lightning
+hydra-core
+omegaconf

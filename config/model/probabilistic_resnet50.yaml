@@ -1,0 +1,12 @@
+type: "probabilistic"
+encoder:
+  backbone: "resnet50"
+  latent_dim: 256
+  pretrained: true
+decoder:
+  use_decoder: true
+  image_size: ${dataset.image_size}
+verifier:
+  hidden_dims: [512, 256]
+projector:
+  proj_dim: 128

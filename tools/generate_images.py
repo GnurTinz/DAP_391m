@@ -1,37 +1,38 @@
 import torch
-import argparse
-import os
-import yaml
-from torch.utils.data import DataLoader
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 from src.models.palm_model import ProbabilisticPalmModel
 from src.models.unet_model import UNetPalmModel
 from src.datasets import DatasetFactory
 from src.utils.generator import ImageGenerator
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate or Sample (Reconstruct) images from trained model")
-    parser.add_argument('--config', type=str, default='config/default.yaml', help='Path to config file')
-    parser.add_argument('--checkpoint', type=str, default='', help='Path to model checkpoint')
-    
-    # Cấu hình qua tham số CLI sẽ ghi đè (overwrite) cấu hình trong YAML
-    parser.add_argument('--output', type=str, default=None, help='Output image path (ghi đè YAML)')
-    parser.add_argument('--num_images', type=int, default=None, help='Number of images to generate (ghi đè YAML)')
-    parser.add_argument('--temperature', type=float, default=None, help='Temperature for variations mode (ghi đè YAML)')
-    parser.add_argument('--mode', type=str, choices=['unconditional', 'reconstruct', 'variations', 'contrastive', 'latent_sampling'], default=None,
-                        help='Mode sinh ảnh: unconditional, reconstruct, variations, contrastive, hoặc latent_sampling (ghi đè YAML)')
-    args = parser.parse_args()
-    
-    with open(args.config, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
+@hydra.main(version_base=None, config_path="../config", config_name="config")
+def main(cfg: DictConfig):
+    config = OmegaConf.to_container(cfg, resolve=True)
         
     # Đọc cấu hình 'generation' từ YAML
     gen_config = config.get('generation', {})
-    mode = args.mode if args.mode is not None else gen_config.get('mode', 'reconstruct')
-    num_images = args.num_images if args.num_images is not None else gen_config.get('num_images', 8)
-    temperature = args.temperature if args.temperature is not None else gen_config.get('temperature', 1.0)
-    output_path = args.output if args.output is not None else gen_config.get('output_path', 'logs/generated_samples.png')
-
+    mode = gen_config.get('mode', 'reconstruct')
+    num_images = gen_config.get('num_images', 8)
+    temperature = gen_config.get('temperature', 1.0)
+    checkpoint_path = config.get('checkpoint', '')
+    
+    # Trích xuất version_dir từ checkpoint (nếu có)
+    import re
+    version_dir = "logs/unversioned_results"
+    if checkpoint_path:
+        match = re.search(r'(.*[\\/]version_\d+)', checkpoint_path.replace('\\', '/'))
+        if match:
+            version_dir = match.group(1)
+            
+    # Cấu hình output directory
+    output_dir = os.path.join(version_dir, 'generated')
+    os.makedirs(output_dir, exist_ok=True)
+    
+    output_path = config.get('output', "")
+    if not output_path or output_path == "logs/results":
+        output_path = os.path.join(output_dir, f"{mode}.png")
         
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Sử dụng device: {device}")
@@ -58,10 +59,10 @@ def main():
     latent_dim = model_config.get('encoder', {}).get('latent_dim', 128)
     
     # 2. Tải trọng số
-    if args.checkpoint and os.path.exists(args.checkpoint):
-        checkpoint = torch.load(args.checkpoint, map_location=device)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Đã nạp trọng số từ: {args.checkpoint}")
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        checkpoint_data = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint_data.get('model_state_dict', checkpoint_data.get('state_dict', checkpoint_data)))
+        print(f"Đã nạp trọng số từ: {checkpoint_path}")
     else:
         print("CẢNH BÁO: Chưa cung cấp checkpoint hợp lệ. Ảnh xuất ra sẽ là nhiễu ngẫu nhiên chưa qua huấn luyện.")
     
@@ -93,22 +94,14 @@ def main():
     generator = ImageGenerator(model, dataloader, device)
     
     if mode == 'reconstruct':
-        if args.output is None and 'output_path' not in gen_config:
-            output_path = 'logs/reconstructed.png'
         generator.generate_reconstruction(num_images=num_images, output_path=output_path)
     elif mode == 'unconditional':
         generator.generate_unconditional(num_images=num_images, latent_dim=latent_dim, output_path=output_path)
     elif mode == 'variations':
-        if args.output is None and 'output_path' not in gen_config:
-            output_path = 'logs/variations.png'
         generator.generate_variations(num_variations=num_images, temperature=temperature, output_path=output_path)
     elif mode == 'contrastive':
-        if args.output is None and 'output_path' not in gen_config:
-            output_path = 'logs/contrastive.png'
         generator.generate_contrastive(output_path=output_path)
     elif mode == 'latent_sampling':
-        if args.output is None and 'output_path' not in gen_config:
-            output_path = 'logs/latent_sampling.png'
         generator.generate_from_latent(num_images=num_images, output_path=output_path)
 
 if __name__ == '__main__':

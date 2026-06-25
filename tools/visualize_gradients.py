@@ -1,7 +1,7 @@
 import os
 import sys
-import argparse
-import yaml
+import hydra
+from omegaconf import DictConfig, OmegaConf
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -61,14 +61,20 @@ def plot_grad_flow(named_parameters, save_path="gradient_flow.png"):
     print(f"Gradient flow plot saved successfully at: {os.path.abspath(save_path)}")
     plt.close()
 
-def main():
-    parser = argparse.ArgumentParser(description="Visualize Gradient Flow of the Model")
-    parser.add_argument('--config', type=str, default='config/mnist.yaml')
-    parser.add_argument('--output', type=str, default='implement-idea/gradient_flow.png')
-    args = parser.parse_args()
-
-    with open(args.config, 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
+@hydra.main(version_base=None, config_path="../config", config_name="config")
+def main(cfg: DictConfig):
+    config = OmegaConf.to_container(cfg, resolve=True)
+    
+    checkpoint_path = config.get('checkpoint', '')
+    import re
+    version_dir = "logs/unversioned_results"
+    if checkpoint_path:
+        match = re.search(r'(.*[\\/]version_\d+)', checkpoint_path.replace('\\', '/'))
+        if match:
+            version_dir = match.group(1)
+            
+    os.makedirs(version_dir, exist_ok=True)
+    output_path = os.path.join(version_dir, "gradient_flow.png")
 
     print("1. Initializing model...")
     model_config = config.get('model', {})
@@ -103,7 +109,7 @@ def main():
     total_loss.backward()
 
     print("5. Generating Graph...")
-    plot_grad_flow(model.named_parameters(), save_path=args.output)
+    plot_grad_flow(model.named_parameters(), save_path=output_path)
 
 if __name__ == '__main__':
     main()
