@@ -3,11 +3,10 @@ import torch.nn as nn
 from .base import BaseModel
 from .encoder import PalmEncoder
 from .decoder import PalmDecoder
-from .verifier import PairVerifier
 
 class ProbabilisticPalmModel(BaseModel):
     """
-    Main model that integrates Encoder, Decoder (optional), and Verifier.
+    Main model that integrates Encoder and Decoder (optional).
     """
     def __init__(self, config: dict):
         super().__init__(config)
@@ -22,8 +21,6 @@ class ProbabilisticPalmModel(BaseModel):
                 decoder_config['image_size'] = config.get('dataset', {}).get('image_size', [128, 128])
             self.decoder = PalmDecoder(decoder_config)
             
-        self.verifier = PairVerifier(config.get('verifier', {}))
-        
         # Light MLP (Projection Head) cho Contrastive Loss
         latent_dim = config.get('encoder', {}).get('latent_dim', 256)
         proj_dim = config.get('projector', {}).get('proj_dim', 128)
@@ -61,9 +58,3 @@ class ProbabilisticPalmModel(BaseModel):
             out['x_hat'] = x_hat
             
         return out
-        
-    def verify(self, mu1, logvar1, mu2, logvar2):
-        """
-        Run the pair verifier.
-        """
-        return self.verifier(mu1, logvar1, mu2, logvar2)

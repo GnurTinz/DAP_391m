@@ -87,14 +87,5 @@ class TestPalmModels(unittest.TestCase):
         self.assertEqual(out['z'].shape, (self.batch_size, self.latent_dim))
         self.assertEqual(out['x_hat'].shape, (self.batch_size, 3, 128, 128))
 
-    def test_probabilistic_palm_model_verify(self):
-        model = ProbabilisticPalmModel(self.model_config)
-        
-        mu1, logvar1 = torch.randn(self.batch_size, self.latent_dim), torch.randn(self.batch_size, self.latent_dim)
-        mu2, logvar2 = torch.randn(self.batch_size, self.latent_dim), torch.randn(self.batch_size, self.latent_dim)
-        
-        score = model.verify(mu1, logvar1, mu2, logvar2)
-        self.assertEqual(score.shape, (self.batch_size, 1))
-
 if __name__ == '__main__':
     unittest.main()

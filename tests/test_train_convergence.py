@@ -57,7 +57,7 @@ class TestVAEConvergence(unittest.TestCase):
         initial_loss = None
         final_loss = None
         
-        print("\n--- Bắt đầu kiểm tra hội tụ VAE (Overfitting Test) ---")
+        print("\n--- Bat dau kiem tra hoi tu VAE (Overfitting Test) ---")
         for epoch in range(self.epochs):
             self.optimizer.zero_grad()
             
@@ -100,7 +100,7 @@ class TestVAEConvergence(unittest.TestCase):
         #         self.assertIsNotNone(param.grad, f"Tham số {name} không nhận được gradient!")
         #         self.assertFalse(torch.all(param.grad == 0), f"Gradient của {name} bị triệt tiêu (bằng 0) hoàn toàn!")
         
-        print("-> Convergence Test Passed: Gradient flow hoạt động tốt & Loss giảm thành công!\n")
+        print("-> Convergence Test Passed: Gradient flow hoat dong tot & Loss giam thanh cong!\n")
 
 if __name__ == '__main__':
     unittest.main()
