@@ -1,7 +1,4 @@
-dataset/*
 env/*
-AI2017/*
-data-collection/*
+data/*
 tmp/*
-idea/
 papers/*
