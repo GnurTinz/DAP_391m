@@ -83,7 +83,7 @@ class GenerativeLightningModule(pl.LightningModule):
         self.log(f'{stage}/Total_Loss', total_loss, prog_bar=True, on_step=True, on_epoch=True)
         self.log(f'{stage}/Recon_Loss', rec, prog_bar=True, on_step=True, on_epoch=True)
         self.log(f'{stage}/KL_Loss', kl, prog_bar=True, on_step=True, on_epoch=True)
-        self.log(f'{stage}/Con_Loss', con, prog_bar=False, on_step=True, on_epoch=True)
+        self.log(f'{stage}/Con_Loss', con, prog_bar=True, on_step=True, on_epoch=True)
         
         if batch_idx == 0:
             if 'x_hat' in outputs:
