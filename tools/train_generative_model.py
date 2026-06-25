@@ -51,6 +51,14 @@ class GenerativeTrainer(Trainer):
             epoch_loss = 0.0
             
             for batch_idx, (images, labels) in enumerate(self.train_loader):
+                if epoch == 0 and batch_idx == 0:
+                    if self.logger:
+                        self.logger.info(f"--- First Batch Info ---")
+                        self.logger.info(f"x (Images) shape: {images.shape}, dtype: {images.dtype}")
+                        self.logger.info(f"y (Labels) shape: {labels.shape}, dtype: {labels.dtype}")
+                        self.logger.info(f"x min: {images.min().item():.4f}, max: {images.max().item():.4f}")
+                        self.logger.info(f"------------------------")
+                        
                 images, labels = images.to(self.device), labels.to(self.device)
                 
                 self.optimizer.zero_grad()
@@ -85,6 +93,10 @@ class GenerativeTrainer(Trainer):
                 
                 # Logging theo log_interval
                 if batch_idx % log_interval == 0:
+                    if self.logger:
+                        self.logger.info(f"Epoch [{epoch+1}/{self.epochs}], Batch [{batch_idx}/{len(self.train_loader)}] "
+                                         f"Total Loss: {total_loss.item():.4f}, Recon: {rec.item():.4f}, "
+                                         f"KL: {kl.item():.4f}, Con: {con.item():.4f}")
                     if self.writer:
                         self.writer.add_scalar('Batch/Total_Loss', total_loss.item(), global_step)
                         self.writer.add_scalar('Batch/Recon_Loss', rec.item(), global_step)

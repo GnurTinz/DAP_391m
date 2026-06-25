@@ -1,0 +1,87 @@
+2026-06-25 14:01:23,013 - INFO - Loaded config from: config/mnist.yaml
+2026-06-25 14:01:23,013 - INFO - Using device: cpu
+2026-06-25 14:01:23,064 - INFO - === MODEL ARCHITECTURE ===
+2026-06-25 14:01:23,064 - INFO - ProbabilisticPalmModel(
+  (encoder): PalmEncoder(
+    (backbone): Sequential(
+      (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+      (1): ReLU()
+      (2): AdaptiveAvgPool2d(output_size=(1, 1))
+      (3): Flatten(start_dim=1, end_dim=-1)
+    )
+    (fc_mu): Linear(in_features=64, out_features=128, bias=True)
+    (fc_logvar): Linear(in_features=64, out_features=128, bias=True)
+  )
+  (decoder): PalmDecoder(
+    (fc): Linear(in_features=128, out_features=16384, bias=True)
+    (decoder): Sequential(
+      (0): ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+      (1): ReLU()
+      (2): ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+      (3): ReLU()
+      (4): ConvTranspose2d(64, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+      (5): ReLU()
+      (6): ConvTranspose2d(32, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+      (7): Sigmoid()
+    )
+  )
+  (projector): Sequential(
+    (0): Linear(in_features=128, out_features=128, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=128, out_features=128, bias=True)
+  )
+)
+2026-06-25 14:01:23,067 - INFO - Bắt đầu quá trình huấn luyện VAE + Contrastive...
+2026-06-25 14:01:27,379 - INFO - --- First Batch Info ---
+2026-06-25 14:01:27,379 - INFO - x (Images) shape: torch.Size([4, 3, 32, 32]), dtype: torch.float32
+2026-06-25 14:01:27,379 - INFO - y (Labels) shape: torch.Size([4]), dtype: torch.int64
+2026-06-25 14:01:27,379 - INFO - x min: -1.0000, max: 1.0000
+2026-06-25 14:01:27,379 - INFO - ------------------------
+2026-06-25 14:01:27,451 - INFO - Epoch [1/20], Batch [0/15000] Total Loss: 1.2683, Recon: 1.2528, KL: 3.1031, Con: 0.0000
+2026-06-25 14:01:27,849 - INFO - Epoch [1/20], Batch [10/15000] Total Loss: 1.0761, Recon: 1.0698, KL: 1.2643, Con: 0.0000
+2026-06-25 14:01:28,343 - INFO - Epoch [1/20], Batch [20/15000] Total Loss: 1.5168, Recon: 0.9149, KL: 1.5588, Con: 1.1883
+2026-06-25 14:01:28,937 - INFO - Epoch [1/20], Batch [30/15000] Total Loss: 1.6217, Recon: 0.9206, KL: 1.4091, Con: 1.3881
+2026-06-25 14:01:30,084 - INFO - Epoch [1/20], Batch [40/15000] Total Loss: 1.2825, Recon: 0.9012, KL: 1.2729, Con: 0.7497
+2026-06-25 14:01:31,633 - INFO - Epoch [1/20], Batch [50/15000] Total Loss: 0.9120, Recon: 0.9045, KL: 1.5087, Con: 0.0000
+2026-06-25 14:01:33,609 - INFO - Epoch [1/20], Batch [60/15000] Total Loss: 1.4555, Recon: 0.9131, KL: 1.5070, Con: 1.0698
+2026-06-25 14:01:35,308 - INFO - Epoch [1/20], Batch [70/15000] Total Loss: 0.9153, Recon: 0.9093, KL: 1.1862, Con: 0.0000
+2026-06-25 14:01:36,645 - INFO - Epoch [1/20], Batch [80/15000] Total Loss: 0.9130, Recon: 0.9082, KL: 0.9498, Con: 0.0000
+2026-06-25 14:01:38,085 - INFO - Epoch [1/20], Batch [90/15000] Total Loss: 1.4518, Recon: 0.9113, KL: 0.7047, Con: 1.0740
+2026-06-25 14:01:39,427 - INFO - Epoch [1/20], Batch [100/15000] Total Loss: 0.9191, Recon: 0.9158, KL: 0.6545, Con: 0.0000
+2026-06-25 14:01:40,826 - INFO - Epoch [1/20], Batch [110/15000] Total Loss: 1.3124, Recon: 0.9361, KL: 0.5706, Con: 0.7468
+2026-06-25 14:01:41,851 - INFO - Epoch [1/20], Batch [120/15000] Total Loss: 0.9154, Recon: 0.9122, KL: 0.6370, Con: 0.0000
+2026-06-25 14:01:42,919 - INFO - Epoch [1/20], Batch [130/15000] Total Loss: 0.9335, Recon: 0.9302, KL: 0.6638, Con: 0.0000
+2026-06-25 14:01:43,553 - INFO - Epoch [1/20], Batch [140/15000] Total Loss: 0.9219, Recon: 0.9190, KL: 0.5814, Con: 0.0000
+2026-06-25 14:01:44,630 - INFO - Epoch [1/20], Batch [150/15000] Total Loss: 0.9068, Recon: 0.9039, KL: 0.5914, Con: 0.0000
+2026-06-25 14:01:45,671 - INFO - Epoch [1/20], Batch [160/15000] Total Loss: 0.9137, Recon: 0.9109, KL: 0.5413, Con: 0.0000
+2026-06-25 14:01:46,617 - INFO - Epoch [1/20], Batch [170/15000] Total Loss: 1.2950, Recon: 0.9260, KL: 0.5603, Con: 0.7324
+2026-06-25 14:01:47,761 - INFO - Epoch [1/20], Batch [180/15000] Total Loss: 0.9193, Recon: 0.9166, KL: 0.5425, Con: 0.0000
+2026-06-25 14:01:49,160 - INFO - Epoch [1/20], Batch [190/15000] Total Loss: 0.9112, Recon: 0.9084, KL: 0.5605, Con: 0.0000
+2026-06-25 14:01:50,248 - INFO - Epoch [1/20], Batch [200/15000] Total Loss: 2.3964, Recon: 0.9051, KL: 0.5340, Con: 2.9771
+2026-06-25 14:01:51,154 - INFO - Epoch [1/20], Batch [210/15000] Total Loss: 0.9176, Recon: 0.9147, KL: 0.5885, Con: 0.0000
+2026-06-25 14:01:52,039 - INFO - Epoch [1/20], Batch [220/15000] Total Loss: 0.9251, Recon: 0.9220, KL: 0.6095, Con: 0.0000
+2026-06-25 14:01:52,875 - INFO - Epoch [1/20], Batch [230/15000] Total Loss: 0.9228, Recon: 0.9203, KL: 0.5084, Con: 0.0000
+2026-06-25 14:01:53,653 - INFO - Epoch [1/20], Batch [240/15000] Total Loss: 1.4611, Recon: 0.9192, KL: 0.5169, Con: 1.0786
+2026-06-25 14:01:54,559 - INFO - Epoch [1/20], Batch [250/15000] Total Loss: 1.4286, Recon: 0.9067, KL: 0.6089, Con: 1.0378
+2026-06-25 14:01:55,809 - INFO - Epoch [1/20], Batch [260/15000] Total Loss: 1.4695, Recon: 0.9111, KL: 0.5534, Con: 1.1111
+2026-06-25 14:01:56,876 - INFO - Epoch [1/20], Batch [270/15000] Total Loss: 0.9135, Recon: 0.9111, KL: 0.4808, Con: 0.0000
+2026-06-25 14:01:57,904 - INFO - Epoch [1/20], Batch [280/15000] Total Loss: 0.9206, Recon: 0.9179, KL: 0.5303, Con: 0.0000
+2026-06-25 14:01:58,834 - INFO - Epoch [1/20], Batch [290/15000] Total Loss: 0.9141, Recon: 0.9118, KL: 0.4473, Con: 0.0000
+2026-06-25 14:01:59,630 - INFO - Epoch [1/20], Batch [300/15000] Total Loss: 1.4961, Recon: 0.9223, KL: 0.4100, Con: 1.1437
+2026-06-25 14:02:00,875 - INFO - Epoch [1/20], Batch [310/15000] Total Loss: 1.4530, Recon: 0.9116, KL: 0.4725, Con: 1.0782
+2026-06-25 14:02:01,723 - INFO - Epoch [1/20], Batch [320/15000] Total Loss: 0.9161, Recon: 0.9139, KL: 0.4285, Con: 0.0000
+2026-06-25 14:02:02,485 - INFO - Epoch [1/20], Batch [330/15000] Total Loss: 1.4415, Recon: 0.9034, KL: 0.4630, Con: 1.0717
+2026-06-25 14:02:03,365 - INFO - Epoch [1/20], Batch [340/15000] Total Loss: 1.4619, Recon: 0.9093, KL: 0.3818, Con: 1.1013
+2026-06-25 14:02:04,493 - INFO - Epoch [1/20], Batch [350/15000] Total Loss: 1.5103, Recon: 0.8987, KL: 0.4531, Con: 1.2187
+2026-06-25 14:02:05,950 - INFO - Epoch [1/20], Batch [360/15000] Total Loss: 0.9067, Recon: 0.9040, KL: 0.5292, Con: 0.0000
+2026-06-25 14:02:07,173 - INFO - Epoch [1/20], Batch [370/15000] Total Loss: 0.9139, Recon: 0.9115, KL: 0.4722, Con: 0.0000
+2026-06-25 14:02:08,051 - INFO - Epoch [1/20], Batch [380/15000] Total Loss: 1.3807, Recon: 0.9269, KL: 0.3690, Con: 0.9040
+2026-06-25 14:02:09,354 - INFO - Epoch [1/20], Batch [390/15000] Total Loss: 1.3935, Recon: 0.9118, KL: 0.3817, Con: 0.9595
+2026-06-25 14:02:10,512 - INFO - Epoch [1/20], Batch [400/15000] Total Loss: 1.5122, Recon: 0.9022, KL: 0.3470, Con: 1.2166
+2026-06-25 14:02:11,485 - INFO - Epoch [1/20], Batch [410/15000] Total Loss: 0.9236, Recon: 0.9219, KL: 0.3346, Con: 0.0000
+2026-06-25 14:02:13,012 - INFO - Epoch [1/20], Batch [420/15000] Total Loss: 1.4683, Recon: 0.9100, KL: 1.8530, Con: 1.0982
+2026-06-25 14:02:14,186 - INFO - Epoch [1/20], Batch [430/15000] Total Loss: 0.9296, Recon: 0.9121, KL: 3.5063, Con: 0.0000
+2026-06-25 14:02:15,588 - INFO - Epoch [1/20], Batch [440/15000] Total Loss: 0.9355, Recon: 0.9202, KL: 3.0620, Con: 0.0000
+2026-06-25 14:02:17,037 - INFO - Epoch [1/20], Batch [450/15000] Total Loss: 1.4779, Recon: 0.9184, KL: 2.1843, Con: 1.0971
+2026-06-25 14:02:18,429 - INFO - Epoch [1/20], Batch [460/15000] Total Loss: 0.9183, Recon: 0.9098, KL: 1.6954, Con: 0.0000
+2026-06-25 14:02:19,781 - INFO - Epoch [1/20], Batch [470/15000] Total Loss: 0.9150, Recon: 0.9080, KL: 1.4079, Con: 0.0000
