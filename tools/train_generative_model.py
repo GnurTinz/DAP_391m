@@ -44,6 +44,8 @@ class GenerativeTrainer(Trainer):
         self.model.train()
         best_loss = float('inf')
         os.makedirs(os.path.join('logs', 'checkpoints'), exist_ok=True)
+        log_interval = self.config.get('training', {}).get('log_interval', 10)
+        save_interval = self.config.get('training', {}).get('save_interval', 1)
         
         for epoch in range(self.epochs):
             epoch_loss = 0.0
@@ -81,8 +83,8 @@ class GenerativeTrainer(Trainer):
                 epoch_loss += total_loss.item()
                 global_step = epoch * len(self.train_loader) + batch_idx
                 
-                # Logging mỗi 10 batch
-                if batch_idx % 10 == 0:
+                # Logging theo log_interval
+                if batch_idx % log_interval == 0:
                     if self.writer:
                         self.writer.add_scalar('Batch/Total_Loss', total_loss.item(), global_step)
                         self.writer.add_scalar('Batch/Recon_Loss', rec.item(), global_step)
@@ -111,8 +113,9 @@ class GenerativeTrainer(Trainer):
                     self.logger.info(f"Saved new best model with loss: {best_loss:.4f}")
             
             # Checkpoint last
-            last_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_last.pth")
-            torch.save(self.model.state_dict(), last_path)
+            if (epoch + 1) % save_interval == 0 or epoch == self.epochs - 1:
+                last_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_last.pth")
+                torch.save(self.model.state_dict(), last_path)
 
 
 def setup_logging(config):
@@ -160,8 +163,8 @@ def main():
 
     # Dataset
     data_dir = config.get('dataset', {}).get('data_dir', 'data/PolyU')
-    batch_size = config.get('dataset', {}).get('batch_size', 32)
-    num_workers = config.get('dataset', {}).get('num_workers', 4)
+    batch_size = config.get('training', {}).get('batch_size', 32)
+    num_workers = config.get('training', {}).get('num_workers', 4)
     
     dataset_name = config.get('dataset', {}).get('name', 'PolyU')
     if dataset_name.upper() == 'MNIST':

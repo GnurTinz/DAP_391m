@@ -1,8 +1,6 @@
 dataset:
   name: "MNIST"
   data_dir: "data/MNIST"
-  batch_size: 64
-  num_workers: 2
   image_size: [32, 32]
   open_set_ratio: 0.0
 
@@ -29,10 +27,14 @@ losses:
 
 training:
   epochs: 20
+  batch_size: 64
+  num_workers: 2
   learning_rate: 0.001
   weight_decay: 0.0001
   optimizer: "AdamW"
   scheduler: "CosineAnnealingLR"
+  log_interval: 10
+  save_interval: 1
 
 logging:
   log_dir: "logs/experiments"

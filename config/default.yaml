@@ -1,8 +1,6 @@
 dataset:
   name: "PolyU"
   data_dir: "data/PolyU"
-  batch_size: 32
-  num_workers: 4
   image_size: [128, 128]
   open_set_ratio: 0.2
 
@@ -29,10 +27,14 @@ losses:
 
 training:
   epochs: 100
+  batch_size: 32
+  num_workers: 4
   learning_rate: 0.001
   weight_decay: 0.0001
   optimizer: "AdamW"
   scheduler: "CosineAnnealingLR"
+  log_interval: 10
+  save_interval: 1
 
 sampling:
   method: "monte_carlo" # options: 'monte_carlo', 'hard_negative', 'gaussian_shift'
