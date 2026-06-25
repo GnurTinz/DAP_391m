@@ -49,3 +49,45 @@ PALM/
 ├── README.md                # Tài liệu hướng dẫn dự án này
 └── requirements.txt         # Danh sách thư viện và dependencies cần thiết
 ```
+
+---
+
+## ⚙️ Cấu Hình Hệ Thống (YAML Configuration)
+
+Dự án sử dụng các file `.yaml` trong thư mục `config/` (VD: `default.yaml`, `mnist_unet.yaml`) để quản lý linh hoạt toàn bộ siêu tham số. Dưới đây là giải thích chi tiết các cấu hình khả dĩ:
+
+### 1. `dataset` (Cấu hình dữ liệu)
+- `data_dir`: Đường dẫn đến thư mục chứa dữ liệu gốc (VD: `data/MNIST` hoặc `data/Palmprint`).
+- `image_size`: Kích thước ảnh đầu vào của mạng, ví dụ `[128, 128]` (Palmprint) hoặc `[32, 32]` (MNIST).
+- `batch_size`: Kích thước batch huấn luyện thông thường.
+- `num_workers`: Số lượng luồng xử lý song song để tải dữ liệu (Dataloader workers).
+
+### 2. `sampler` (Cấu hình lấy mẫu dữ liệu)
+- `type`: Chiến lược bốc dữ liệu (VD: `pk_sampler` đặc biệt tối ưu cho Contrastive Learning).
+- `p`: Số lượng danh tính (Identities / Classes) trong một batch.
+- `k`: Số lượng mẫu (Samples) của mỗi danh tính trong batch.
+ *(Ví dụ: p=16, k=4 nghĩa là mỗi batch có 16 người, mỗi người 4 ảnh -> Tổng Batch Size = 64)*
+
+### 3. `model` (Cấu hình kiến trúc mạng)
+- `type`: Lõi kiến trúc (`default` cho Probabilistic VAE cơ bản, hoặc `unet` cho Probabilistic U-Net với Skip-connections).
+- `encoder`:
+  - `backbone`: Kiến trúc trích xuất đặc trưng (VD: `resnet18`, `resnet50`, hoặc `mock` để test nhẹ).
+  - `latent_dim`: Số chiều không gian ẩn $\mathbf{z}$ (Ví dụ: `128`).
+  - `pretrained`: Sử dụng trọng số ImageNet hay không (`true` / `false`).
+- `decoder`:
+  - `use_decoder`: Kích hoạt nhánh giải mã để tái tạo ảnh (Reconstruction) nhằm giữ chi tiết không gian cục bộ (`true` / `false`).
+- `projector`:
+  - `proj_dim`: Số chiều nén của nhánh Light MLP dùng riêng để tính Supervised Contrastive Loss (Ví dụ: `64`).
+
+### 4. `losses` (Trọng số cân bằng hàm mất mát)
+- `lambda_rec`: Trọng số của lỗi tái tạo ảnh (Reconstruction Loss).
+- `lambda_con`: Trọng số ép cụm danh tính (Supervised Contrastive Loss).
+- `beta_kl`: Trọng số ép không gian ẩn tuân theo phân phối chuẩn N(0, 1) (KL Divergence).
+- `lambda_unc`: Trọng số kiểm soát độ bất định (Uncertainty Penalty) không quá lớn/nhỏ.
+
+### 5. `training` (Cấu hình vòng đời huấn luyện)
+- `epochs`: Tổng số vòng lặp huấn luyện.
+- `learning_rate`: Tốc độ học của Optimizer (VD: `1e-3` hoặc `0.001`).
+- `weight_decay`: Hệ số tiêu biến trọng số, chống Overfitting (VD: `1e-4`).
+- `log_interval`: Chu kỳ in log ra Terminal và TensorBoard (tính theo số batch).
+- `save_dir`: Thư mục tự động lưu lại các file trọng số `.pth` (Checkpoint).

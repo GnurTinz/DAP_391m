@@ -104,12 +104,12 @@ class UNetPalmModel(BaseModel):
                 nn.Tanh() # Đưa về [-1, 1]
             )
 
-    def reparameterize(self, mu, logvar):
+    def reparameterize(self, mu, logvar, temperature=1.0):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        return mu + eps * std
+        return mu + eps * std * temperature
 
-    def forward(self, x, decode=False):
+    def forward(self, x, decode=False, temperature=1.0):
         # Encoder (Lưu lại skip connections)
         x1 = self.inc(x)       # Skip 1 (64 channels)
         x2 = self.down1(x1)    # Skip 2 (128 channels)
@@ -126,7 +126,7 @@ class UNetPalmModel(BaseModel):
         # và chống nhiễu loạn không gian latent z
         logvar = torch.clamp(logvar, min=-20, max=2.0)
 
-        z = self.reparameterize(mu, logvar)
+        z = self.reparameterize(mu, logvar, temperature)
         
         out = {
             'mu': mu,
