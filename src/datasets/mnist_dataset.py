@@ -40,3 +40,6 @@ class MNISTDataset(BaseDataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         image, label = self.mnist_data[idx]
         return image, label
+
+    def get_labels(self):
+        return self.mnist_data.targets.tolist()

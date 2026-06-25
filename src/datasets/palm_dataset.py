@@ -72,3 +72,8 @@ class PalmPrintDataset(BaseDataset):
             print(f"Error loading image {img_path}: {e}")
             img_size = self.config.get('image_size', [128, 128])
             return torch.randn(3, img_size[0], img_size[1]), label
+
+    def get_labels(self):
+        if not self.samples:
+            return [0] * 100
+        return [label for _, label in self.samples]

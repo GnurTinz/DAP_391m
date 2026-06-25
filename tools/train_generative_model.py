@@ -19,9 +19,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.datasets.palm_dataset import PalmPrintDataset
 from src.datasets.mnist_dataset import MNISTDataset
+from src.datasets.sampler import PKSampler
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.trainer import Trainer
 from src.losses.custom import SupConLoss
+from src.engine.loss_scheduler import LossSchedulerManager
 
 class GenerativeTrainer(Trainer):
     """
@@ -37,6 +39,9 @@ class GenerativeTrainer(Trainer):
         self.supcon_loss = SupConLoss(config.get('losses', {}))
         self.lambda_con = config.get('losses', {}).get('lambda_con', 0.5)
         
+        # Scheduler
+        self.loss_scheduler = LossSchedulerManager(config.get('loss_schedules', {}))
+        
         # Đảm bảo model lên đúng device
         self.model = self.model.to(self.device)
 
@@ -48,6 +53,18 @@ class GenerativeTrainer(Trainer):
         save_interval = self.config.get('training', {}).get('save_interval', 1)
         
         for epoch in range(self.epochs):
+            # Update loss weights for the epoch
+            weights = self.loss_scheduler.get_weights(epoch)
+            if 'beta_kl' in weights: self.beta_kl = weights['beta_kl']
+            if 'lambda_rec' in weights: self.lambda_rec = weights['lambda_rec']
+            if 'lambda_con' in weights: self.lambda_con = weights['lambda_con']
+            if 'lambda_unc' in weights: self.lambda_unc = weights['lambda_unc']
+            
+            if self.logger:
+                self.logger.info(f"--- Epoch {epoch+1}/{self.epochs} Loss Weights ---")
+                self.logger.info(f"beta_kl: {self.beta_kl:.4f}, lambda_rec: {self.lambda_rec:.4f}, "
+                                 f"lambda_con: {self.lambda_con:.4f}, lambda_unc: {self.lambda_unc:.4f}")
+                                 
             epoch_loss = 0.0
             
             for batch_idx, (images, labels) in enumerate(self.train_loader):
@@ -181,10 +198,32 @@ def main():
     dataset_name = config.get('dataset', {}).get('name', 'PolyU')
     if dataset_name.upper() == 'MNIST':
         train_dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
-    else:
+    elif dataset_name.upper() == 'POLYU':
         train_dataset = PalmPrintDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
-    
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    else:
+        raise ValueError(f"Dataset {dataset_name} không được hỗ trợ!")
+
+    # Sampler setup
+    use_sampler = config.get('training', {}).get('use_sampler', True)
+    if use_sampler:
+        p = config.get('training', {}).get('sampler_p', max(1, batch_size // 4))
+        k = config.get('training', {}).get('sampler_k', 4)
+        if p * k != batch_size:
+            logger.warning(f"Batch size {batch_size} không bằng p*k ({p}*{k}). Đang dùng p*k={p*k} làm batch_size thực tế.")
+        
+        sampler = PKSampler(train_dataset.get_labels(), p=p, k=k)
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_sampler=sampler,
+            num_workers=num_workers
+        )
+    else:
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_size=batch_size, 
+            shuffle=True, 
+            num_workers=num_workers
+        )
 
     # Model
     model_config = config.get('model', {})

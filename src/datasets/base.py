@@ -38,3 +38,9 @@ class BaseDataset(Dataset, ABC):
         Can be extended to return (image_tensor, label, mask) if needed.
         """
         pass
+
+    def get_labels(self):
+        """
+        Return a list of labels for all samples, useful for samplers.
+        """
+        raise NotImplementedError
