@@ -81,9 +81,9 @@ class GenerativeLightningModule(pl.LightningModule):
             
         # Logging
         self.log(f'{stage}/Total_Loss', total_loss, prog_bar=True, on_step=True, on_epoch=True)
-        self.log(f'{stage}/Recon_Loss', rec, on_step=False, on_epoch=True)
-        self.log(f'{stage}/KL_Loss', kl, on_step=False, on_epoch=True)
-        self.log(f'{stage}/Con_Loss', con, on_step=False, on_epoch=True)
+        self.log(f'{stage}/Recon_Loss', rec, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(f'{stage}/KL_Loss', kl, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(f'{stage}/Con_Loss', con, prog_bar=False, on_step=True, on_epoch=True)
         
         if batch_idx == 0:
             if 'x_hat' in outputs:
@@ -94,6 +94,17 @@ class GenerativeLightningModule(pl.LightningModule):
                     self.logger.experiment.add_images(f'{stage}/Reconstructed', log_xhat, self.current_epoch)
                 except Exception:
                     pass
+                
+                # Lưu file ảnh vật lý ra ổ cứng
+                import os
+                import torchvision.utils as vutils
+                version_dir = self.logger.log_dir if self.logger else "logs/unversioned_results"
+                img_dir = os.path.join(version_dir, "epoch_samples")
+                os.makedirs(img_dir, exist_ok=True)
+                
+                # Ghép ảnh gốc (dòng trên) và ảnh tái tạo (dòng dưới)
+                comparison = torch.cat([log_images, log_xhat], dim=0)
+                vutils.save_image(comparison, os.path.join(img_dir, f"{stage}_epoch_{self.current_epoch:03d}.png"), nrow=4)
                     
         return total_loss
 
