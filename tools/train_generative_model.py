@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from src.datasets.palm_dataset import PalmPrintDataset
 from src.datasets.mnist_dataset import MNISTDataset
-from src.datasets.sampler import PKSampler
+from src.datasets.sampler import get_sampler
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.trainer import Trainer
 from src.losses.custom import SupConLoss
@@ -230,17 +230,28 @@ def main():
     # Sampler setup
     use_sampler = config.get('training', {}).get('use_sampler', True)
     if use_sampler:
-        p = config.get('training', {}).get('sampler_p', max(1, batch_size // 4))
-        k = config.get('training', {}).get('sampler_k', 4)
-        if p * k != batch_size:
-            logger.warning(f"Batch size {batch_size} không bằng p*k ({p}*{k}). Đang dùng p*k={p*k} làm batch_size thực tế.")
+        sampler_type = config.get('training', {}).get('sampler_type', 'pk_sampler')
+        p = config.get('training', {}).get('sampler_p', None)
+        k = config.get('training', {}).get('sampler_k', None)
+        num_classes = config.get('training', {}).get('sampler_num_classes', None)
         
-        sampler = PKSampler(train_dataset.get_labels(), p=p, k=k)
-        train_loader = DataLoader(
-            train_dataset, 
-            batch_sampler=sampler,
-            num_workers=num_workers
-        )
+        try:
+            sampler = get_sampler(
+                sampler_type=sampler_type, 
+                labels=train_dataset.get_labels(), 
+                batch_size=batch_size, 
+                p=p, k=k, 
+                num_classes=num_classes
+            )
+            train_loader = DataLoader(
+                train_dataset, 
+                batch_sampler=sampler,
+                num_workers=num_workers
+            )
+            logger.info(f"Đang sử dụng sampler: {sampler_type}")
+        except Exception as e:
+            logger.error(f"Lỗi khởi tạo sampler: {e}. Chuyển về DataLoader mặc định.")
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     else:
         train_loader = DataLoader(
             train_dataset, 

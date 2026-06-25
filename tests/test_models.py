@@ -2,7 +2,7 @@ import unittest
 import torch
 from src.models.encoder import PalmEncoder
 from src.models.decoder import PalmDecoder
-from src.models.verifier import PairVerifier
+from src.models.verifier import TestTimeVerifier
 from src.models.palm_model import ProbabilisticPalmModel
 
 class TestPalmModels(unittest.TestCase):
@@ -55,16 +55,13 @@ class TestPalmModels(unittest.TestCase):
         self.assertEqual(x_hat.shape, (self.batch_size, 3, 128, 128), "Shape ảnh được tái tạo không khớp!")
 
     def test_verifier(self):
-        verifier = PairVerifier(self.verifier_config)
+        verifier = TestTimeVerifier(self.latent_dim, hidden_dim=64)
         
-        # Tạo 2 cặp mu, logvar giả lập
-        mu1 = torch.randn(self.batch_size, self.latent_dim)
-        logvar1 = torch.randn(self.batch_size, self.latent_dim)
+        # Tạo z và r giả lập
+        z = torch.randn(self.batch_size, self.latent_dim)
+        r = torch.randn(1, self.latent_dim) # r typically comes from gallery (1, latent_dim)
         
-        mu2 = torch.randn(self.batch_size, self.latent_dim)
-        logvar2 = torch.randn(self.batch_size, self.latent_dim)
-        
-        score = verifier(mu1, logvar1, mu2, logvar2)
+        score = verifier(z, r)
         
         # Output shape của MLP verifier là (batch_size, 1) vì linear cuối cùng là 1
         self.assertEqual(score.shape, (self.batch_size, 1), "Shape của điểm số verification không khớp!")

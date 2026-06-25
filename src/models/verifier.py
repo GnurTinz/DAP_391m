@@ -1,43 +1,24 @@
 import torch
 import torch.nn as nn
-from .base import BaseModel
 
-class PairVerifier(BaseModel):
+class TestTimeVerifier(nn.Module):
     """
-    MLP verifier for checking if two latent distributions belong to the same identity.
-    Input features: [mu_1, mu_2, |mu_1 - mu_2|, mu_1 * mu_2, sigma_1, sigma_2, |sigma_1 - sigma_2|]
+    MLP Verifier cho giai đoạn Test-Time và Verification.
+    Nhận đầu vào là [Z, r] (concat), trả về xác suất mẫu là Positive.
     """
-    def __init__(self, config: dict):
-        super().__init__(config)
-        self.latent_dim = self.config.get('latent_dim', 256)
-        hidden_dims = self.config.get('hidden_dims', [512, 256, 128])
+    def __init__(self, latent_dim, hidden_dim=128):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(latent_dim * 2, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
         
-        # 7 components as specified in the pipeline note
-        in_features = 7 * self.latent_dim
-        
-        layers = []
-        prev_dim = in_features
-        for h_dim in hidden_dims:
-            layers.append(nn.Linear(prev_dim, h_dim))
-            layers.append(nn.ReLU())
-            prev_dim = h_dim
-        
-        layers.append(nn.Linear(prev_dim, 1))
-        # BCEWithLogitsLoss doesn't need Sigmoid at the end
-        self.mlp = nn.Sequential(*layers)
-
-    def forward(self, mu1, logvar1, mu2, logvar2):
-        sigma1 = torch.exp(0.5 * logvar1)
-        sigma2 = torch.exp(0.5 * logvar2)
-        
-        feat = torch.cat([
-            mu1,
-            mu2,
-            torch.abs(mu1 - mu2),
-            mu1 * mu2,
-            sigma1,
-            sigma2,
-            torch.abs(sigma1 - sigma2)
-        ], dim=1)
-        
-        return self.mlp(feat)
+    def forward(self, z, r):
+        # r có thể là 1 vector, được expand_as(z) nếu cần ở bên ngoài, 
+        # hoặc broadcast concat trực tiếp
+        r_expanded = r.expand(z.size(0), -1)
+        feat = torch.cat([z, r_expanded], dim=1)
+        return self.net(feat)

@@ -56,6 +56,9 @@ training:
   scheduler: "CosineAnnealingLR"
   log_interval: 10
   save_interval: 1
+  use_sampler: true
+  sampler_type: "random_class" # options: pk_sampler, random_class, weighted
+  sampler_num_classes: 4
 
 logging:
   log_dir: "logs/experiments"

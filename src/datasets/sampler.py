@@ -1,11 +1,12 @@
 import numpy as np
+import torch
 from torch.utils.data.sampler import Sampler
 from collections import defaultdict
 
 class PKSampler(Sampler):
     """
     BatchSampler that samples P classes and K instances per class to form a batch of size P * K.
-    Useful for Contrastive Learning (SupConLoss) to ensure every batch has positive pairs.
+    Useful for Contrastive Learning (SupConLoss, TripletLoss).
     """
     def __init__(self, labels, p=16, k=4):
         self.p = p
@@ -18,20 +19,16 @@ class PKSampler(Sampler):
             self.label_to_indices[label].append(idx)
             
         self.identities = list(self.label_to_indices.keys())
-        
-        # Tính số lượng batch xấp xỉ có thể lấy trong 1 epoch
         self.num_batches = max(1, len(self.labels) // self.batch_size)
         
     def __iter__(self):
         for _ in range(self.num_batches):
             batch = []
-            # Chọn P danh tính (cho phép trùng lặp nếu số lượng danh tính < P)
             replace_p = len(self.identities) < self.p
             classes = np.random.choice(self.identities, size=self.p, replace=replace_p)
             
             for c in classes:
                 indices = self.label_to_indices[c]
-                # Chọn K mẫu cho mỗi danh tính
                 replace_k = len(indices) < self.k
                 sampled_indices = np.random.choice(indices, size=self.k, replace=replace_k)
                 batch.extend(sampled_indices)
@@ -40,3 +37,85 @@ class PKSampler(Sampler):
             
     def __len__(self):
         return self.num_batches
+
+class RandomClassSampler(Sampler):
+    """
+    Samples C random classes and includes ALL their instances in the batch.
+    Good for datasets where instance counts per class vary greatly (N-pair loss).
+    """
+    def __init__(self, labels, num_classes_per_batch=4):
+        self.num_classes = num_classes_per_batch
+        self.labels = np.array(labels)
+        
+        self.label_to_indices = defaultdict(list)
+        for idx, label in enumerate(self.labels):
+            self.label_to_indices[label].append(idx)
+            
+        self.identities = list(self.label_to_indices.keys())
+        self.num_batches = max(1, len(self.labels) // 32) # estimate batch size
+        
+    def __iter__(self):
+        for _ in range(self.num_batches):
+            batch = []
+            replace_c = len(self.identities) < self.num_classes
+            classes = np.random.choice(self.identities, size=self.num_classes, replace=replace_c)
+            
+            for c in classes:
+                batch.extend(self.label_to_indices[c])
+                
+            yield batch
+            
+    def __len__(self):
+        return self.num_batches
+
+class WeightedClassSampler(Sampler):
+    """
+    Standard WeightedRandomSampler approach but wrapped as a BatchSampler.
+    Samples batches based on inverse class frequency to handle highly imbalanced datasets.
+    """
+    def __init__(self, labels, batch_size=32):
+        self.batch_size = batch_size
+        self.labels = np.array(labels)
+        
+        class_counts = np.bincount(self.labels)
+        class_weights = 1.0 / (class_counts + 1e-6)
+        
+        self.sample_weights = class_weights[self.labels]
+        self.sample_weights /= self.sample_weights.sum()
+        
+        self.num_batches = max(1, len(self.labels) // self.batch_size)
+        
+    def __iter__(self):
+        for _ in range(self.num_batches):
+            # Sample indices based on computed weights
+            batch = np.random.choice(
+                len(self.labels), 
+                size=self.batch_size, 
+                replace=True, 
+                p=self.sample_weights
+            )
+            yield batch.tolist()
+            
+    def __len__(self):
+        return self.num_batches
+
+def get_sampler(sampler_type, labels, batch_size, p=None, k=None, num_classes=None):
+    """
+    Factory method để chọn sampler tùy thuộc cấu hình yaml.
+    """
+    if sampler_type == 'pk_sampler':
+        if p is None or k is None:
+            k = 4
+            p = max(1, batch_size // k)
+        return PKSampler(labels, p=p, k=k)
+    
+    elif sampler_type == 'random_class':
+        if num_classes is None:
+            num_classes = max(1, batch_size // 8)
+        return RandomClassSampler(labels, num_classes_per_batch=num_classes)
+        
+    elif sampler_type == 'weighted':
+        return WeightedClassSampler(labels, batch_size=batch_size)
+        
+    else:
+        raise ValueError(f"Sampler type {sampler_type} không được hỗ trợ!")
