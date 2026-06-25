@@ -7,9 +7,12 @@ class CNNBaseDecoder(nn.Module):
         super().__init__()
         self.latent_dim = latent_dim
         self.image_size = image_size
+        # Tính toán kích thước khởi tạo (dựa trên 4 lớp ConvTranspose2d với stride=2 -> scale 16 lần)
+        self.init_size = image_size[0] // 16
+        self.init_size = max(self.init_size, 1) # Đảm bảo ít nhất là 1x1
         
         # Projection
-        self.fc = nn.Linear(latent_dim, 256 * 8 * 8)
+        self.fc = nn.Linear(latent_dim, 256 * self.init_size * self.init_size)
         
         # ConvTranspose blocks
         self.decoder = nn.Sequential(
@@ -25,7 +28,7 @@ class CNNBaseDecoder(nn.Module):
 
     def forward(self, z):
         x = self.fc(z)
-        x = x.view(-1, 256, 8, 8)
+        x = x.view(-1, 256, self.init_size, self.init_size)
         x = self.decoder(x)
         if list(x.shape[-2:]) != list(self.image_size):
             x = F.interpolate(x, size=tuple(self.image_size), mode='bilinear', align_corners=False)
@@ -74,8 +77,10 @@ class DetailedResNetDecoder(nn.Module):
         super().__init__()
         self.latent_dim = latent_dim
         self.image_size = image_size
+        self.init_size = image_size[0] // 16
+        self.init_size = max(self.init_size, 1)
         
-        self.fc = nn.Linear(latent_dim, 256 * 8 * 8)
+        self.fc = nn.Linear(latent_dim, 256 * self.init_size * self.init_size)
         
         self.decoder = nn.Sequential(
             ResidualBlock(256),
@@ -104,7 +109,7 @@ class DetailedResNetDecoder(nn.Module):
 
     def forward(self, z):
         x = self.fc(z)
-        x = x.view(-1, 256, 8, 8)
+        x = x.view(-1, 256, self.init_size, self.init_size)
         x = self.decoder(x)
         if list(x.shape[-2:]) != list(self.image_size):
             x = F.interpolate(x, size=tuple(self.image_size), mode='bilinear', align_corners=False)

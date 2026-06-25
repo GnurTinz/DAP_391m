@@ -19,8 +19,9 @@ class PalmPrintDataset(BaseDataset):
         if self.is_train:
             self.transform = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomHorizontalFlip(),
+                # Bỏ RandomHorizontalFlip vì vân tay/chỉ tay mang tính bất đối xứng, lật ảnh sẽ làm hỏng ID
                 transforms.RandomRotation(15),
+                transforms.ColorJitter(brightness=0.1, contrast=0.1), # Thêm đổi màu nhẹ để chống nhiễu ánh sáng
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
             ])

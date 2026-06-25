@@ -81,8 +81,32 @@ class TestPalmModels(unittest.TestCase):
         # Kiểm tra shape
         self.assertEqual(out['mu'].shape, (self.batch_size, self.latent_dim))
         self.assertEqual(out['logvar'].shape, (self.batch_size, self.latent_dim))
+        self.assertEqual(out['x_hat'].shape, (self.batch_size, 3, 128, 128))
+
+    def test_unet_palm_model_forward(self):
+        from src.models.unet_model import UNetPalmModel
+        
+        # UNet config
+        unet_config = dict(self.model_config)
+        unet_config['dataset'] = {'image_size': [128, 128]}
+        unet_config['encoder'] = {'latent_dim': self.latent_dim}
+        unet_config['projector'] = {'proj_dim': 128}
+        
+        model = UNetPalmModel(unet_config)
+        
+        out = model(self.dummy_input, decode=True)
+        
+        self.assertIn('mu', out)
+        self.assertIn('logvar', out)
+        self.assertIn('z', out)
+        self.assertIn('proj', out)
+        self.assertIn('x_hat', out)
+        
+        self.assertEqual(out['mu'].shape, (self.batch_size, self.latent_dim))
+        self.assertEqual(out['logvar'].shape, (self.batch_size, self.latent_dim))
         self.assertEqual(out['z'].shape, (self.batch_size, self.latent_dim))
         self.assertEqual(out['x_hat'].shape, (self.batch_size, 3, 128, 128))
+        self.assertEqual(out['proj'].shape, (self.batch_size, 128))
 
 if __name__ == '__main__':
     unittest.main()

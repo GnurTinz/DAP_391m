@@ -5,6 +5,7 @@ dataset:
   open_set_ratio: 0.2
 
 model:
+  type: "probabilistic" # options: probabilistic, unet
   encoder:
     backbone: "resnet18"
     latent_dim: 256
@@ -56,6 +57,7 @@ training:
   scheduler: "CosineAnnealingLR"
   log_interval: 10
   save_interval: 1
+  device: "cuda" # Default device to run on
   use_sampler: true
   sampler_type: "pk_sampler" # options: pk_sampler, random_class, weighted
   sampler_p: 8

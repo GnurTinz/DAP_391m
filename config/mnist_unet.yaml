@@ -5,21 +5,21 @@ dataset:
   open_set_ratio: 0.0
 
 model:
-  type: "probabilistic"
+  type: "unet"
   encoder:
-    backbone: "mock" # Dùng mock encoder vì ảnh nhỏ 32x32
+    # backbone: "mock" # Dùng mock encoder vì ảnh nhỏ 32x32
     latent_dim: 128
-    pretrained: false
+    # pretrained: false
   decoder:
-    type: "resnet"
+    # type: "resnet"
     use_decoder: true
-    latent_dim: 128
+    # latent_dim: 128
     image_size: [32, 32]
-    hidden_dims: [128, 64, 32]
+    # hidden_dims: [128, 64, 32]
   verifier:
     hidden_dims: [256, 128]
   projector:
-    proj_dim: 128
+    proj_dim: 64
 
 losses:
   lambda_id: 1.0
@@ -67,5 +67,5 @@ training:
 
 logging:
   log_dir: "logs/experiments"
-  experiment_name: "mnist_vae_train"
+  experiment_name: "mnist_unet_train"
   enable_tensorboard: true

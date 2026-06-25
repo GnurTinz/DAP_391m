@@ -116,6 +116,7 @@ class GenerativeTrainer(Trainer):
                 
                 # Backward
                 total_loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0) # Ngăn bùng nổ Gradient (đặc biệt là logvar của KL)
                 self.optimizer.step()
                 
                 epoch_loss += total_loss.item()
@@ -155,8 +156,11 @@ class GenerativeTrainer(Trainer):
             if self.writer:
                 self.writer.add_scalar('Epoch/Total_Loss', avg_loss, epoch)
                 if 'x_hat' in outputs:
-                    self.writer.add_images('Epoch/Original_Images', images[:4], epoch)
-                    self.writer.add_images('Epoch/Reconstructed_Images', outputs['x_hat'][:4], epoch)
+                    # Đưa ảnh từ [-1, 1] về lại [0, 1] để Tensorboard hiển thị chuẩn màu
+                    log_images = (images[:4] + 1) / 2.0
+                    log_xhat = (outputs['x_hat'][:4] + 1) / 2.0
+                    self.writer.add_images('Epoch/Original_Images', log_images, epoch)
+                    self.writer.add_images('Epoch/Reconstructed_Images', log_xhat, epoch)
 
             # Checkpoint best
             if avg_loss < best_loss:
@@ -210,6 +214,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train VAE (Generative Model) + Contrastive Loss")
     parser.add_argument('--config', type=str, default='config/default.yaml')
     parser.add_argument('--resume', type=str, default=None, help='Path to checkpoint to resume training')
+    parser.add_argument('--device', type=str, default=None, help='Device to run on (e.g., cuda:0, cpu)')
     args = parser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
@@ -225,7 +230,16 @@ def main():
     else:
         writer = None
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Resolve device (Priority: argparse -> yaml -> auto)
+    config_device = config.get('training', {}).get('device', None)
+    if args.device:
+        device_str = args.device
+    elif config_device:
+        device_str = config_device
+    else:
+        device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
+        
+    device = torch.device(device_str)
     logger.info(f"Using device: {device}")
 
     # Dataset
@@ -277,7 +291,13 @@ def main():
     if 'decoder' not in model_config:
         model_config['decoder'] = {}
     model_config['decoder']['image_size'] = config.get('dataset', {}).get('image_size', [128, 128])
-    model = ProbabilisticPalmModel(model_config)
+    model_type = model_config.get('type', 'probabilistic')
+    if model_type == 'unet':
+        from src.models.unet_model import UNetPalmModel
+        model = UNetPalmModel(model_config)
+    else:
+        model = ProbabilisticPalmModel(model_config)
+        
     model.use_decoder = True 
     
     logger.info("=== MODEL ARCHITECTURE ===")
