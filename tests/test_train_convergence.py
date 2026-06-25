@@ -140,9 +140,9 @@ class TestVAEConvergence(unittest.TestCase):
         kl_loss_fn = KLDivLoss({})
         supcon_loss_fn = SupConLoss({'temperature': 0.1})
         
-        os.makedirs("tmp/MNIST", exist_ok=True)
+        os.makedirs("data/MNIST", exist_ok=True)
         # Tải MNIST
-        dataset = MNISTDataset(data_dir="tmp/MNIST", config={"image_size": [32, 32]}, is_train=True)
+        dataset = MNISTDataset(data_dir="data/MNIST", config={"image_size": [32, 32]}, is_train=True)
         
         # PKSampler đảm bảo batch có cặp nhãn dương tính để tính Contrastive Loss hợp lệ
         sampler = PKSampler(dataset.get_labels(), p=2, k=2) # 2 danh tính, mỗi danh tính 2 ảnh -> batch_size=4
