@@ -1,0 +1,38 @@
+dataset:
+  name: "MNIST"
+  data_dir: "data/MNIST"
+  batch_size: 64
+  num_workers: 2
+  image_size: [32, 32]
+  open_set_ratio: 0.0
+
+model:
+  encoder:
+    backbone: "mock" # Dùng mock encoder vì ảnh nhỏ 32x32
+    latent_dim: 128
+    pretrained: false
+  decoder:
+    use_decoder: true
+    hidden_dims: [128, 64, 32]
+  verifier:
+    hidden_dims: [256, 128]
+
+losses:
+  lambda_id: 1.0
+  lambda_con: 0.5
+  lambda_pair: 1.0
+  lambda_rec: 1.0 # Tăng trọng số reconstruction cho VAE MNIST
+  beta_kl: 0.005 # Beta_kl nhỏ
+  lambda_unc: 0.1
+
+training:
+  epochs: 20
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  optimizer: "AdamW"
+  scheduler: "CosineAnnealingLR"
+
+logging:
+  log_dir: "logs/experiments"
+  experiment_name: "mnist_vae_train"
+  enable_tensorboard: true

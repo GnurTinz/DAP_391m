@@ -18,6 +18,15 @@ class ProbabilisticPalmModel(BaseModel):
             self.decoder = PalmDecoder(config.get('decoder', {}))
             
         self.verifier = PairVerifier(config.get('verifier', {}))
+        
+        # Light MLP (Projection Head) cho Contrastive Loss
+        latent_dim = config.get('encoder', {}).get('latent_dim', 256)
+        proj_dim = config.get('projector', {}).get('proj_dim', 128)
+        self.projector = nn.Sequential(
+            nn.Linear(latent_dim, latent_dim),
+            nn.ReLU(),
+            nn.Linear(latent_dim, proj_dim)
+        )
 
     def reparameterize(self, mu, logvar):
         """
@@ -38,7 +47,8 @@ class ProbabilisticPalmModel(BaseModel):
         out = {
             'mu': mu,
             'logvar': logvar,
-            'z': z
+            'z': z,
+            'proj': self.projector(mu) # Đi qua Light MLP để phục vụ Contrastive Loss
         }
         
         if decode and self.use_decoder:

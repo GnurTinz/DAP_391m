@@ -34,9 +34,50 @@ class ReconstructionLoss(BaseLoss):
 
 class SupConLoss(BaseLoss):
     """
-    Supervised Contrastive Loss wrapper (simplified mock for skeleton).
-    In practice, implement full SupCon logic.
+    Supervised Contrastive Loss.
+    Kéo các mẫu cùng danh tính lại gần nhau, đẩy các mẫu khác danh tính ra xa trên không gian cầu.
     """
+    def __init__(self, config: dict):
+        super().__init__(config)
+        # Lấy temperature từ config, mặc định 0.1
+        self.temperature = config.get('temperature', 0.1)
+
     def forward(self, features, labels):
-        # Mock implementation returning scalar tensor
-        return torch.tensor(0.0, requires_grad=True, device=features.device)
+        device = features.device
+        batch_size = features.shape[0]
+        
+        # 1. Chuẩn hóa L2 để đưa features lên unit sphere (không gian cầu)
+        features = F.normalize(features, p=2, dim=1)
+        
+        # 2. Tính ma trận cosine similarity và chia cho temperature
+        sim_matrix = torch.matmul(features, features.T) / self.temperature
+        
+        # 3. Tạo mask cho các mẫu cùng label (Positive pairs)
+        labels = labels.contiguous().view(-1, 1)
+        mask = torch.eq(labels, labels.T).float().to(device)
+        
+        # 4. Loại bỏ phần đường chéo chính (Self-contrast) để không so sánh mẫu với chính nó
+        logits_mask = torch.ones_like(mask) - torch.eye(batch_size, device=device)
+        mask = mask * logits_mask
+        
+        # 5. Xử lý numerical stability (tránh overflow khi tính exp)
+        logits_max, _ = torch.max(sim_matrix, dim=1, keepdim=True)
+        logits = sim_matrix - logits_max.detach()
+        
+        # 6. Tính log_prob = log( exp(logits) / sum(exp(logits)) )
+        exp_logits = torch.exp(logits) * logits_mask
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True) + 1e-9)
+        
+        # 7. Tính mean log-likelihood over positive
+        num_positives = mask.sum(1)
+        valid_anchors = num_positives > 0 # Chỉ xét các anchor có ít nhất 1 positive sample
+        
+        if not valid_anchors.any():
+            # Nếu trong batch toàn các danh tính riêng biệt (không có cặp dương nào)
+            return torch.tensor(0.0, requires_grad=True, device=device)
+            
+        mean_log_prob_pos = (mask[valid_anchors] * log_prob[valid_anchors]).sum(1) / num_positives[valid_anchors]
+        
+        # 8. Contrastive loss = -mean_log_prob_pos.mean()
+        loss = -mean_log_prob_pos.mean()
+        return loss
