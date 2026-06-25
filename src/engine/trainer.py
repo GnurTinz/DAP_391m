@@ -2,15 +2,17 @@ import torch
 from torch.utils.data import DataLoader
 from ..models.palm_model import ProbabilisticPalmModel
 from ..losses.custom import KLDivLoss, ReconstructionLoss, UncertaintyLoss
+from ..utils.logger import BaseLogger
 
 class Trainer:
     """
     Main training loop for the Probabilistic PalmPrint Model.
     """
-    def __init__(self, model: ProbabilisticPalmModel, train_loader: DataLoader, config: dict):
+    def __init__(self, model: ProbabilisticPalmModel, train_loader: DataLoader, config: dict, logger: BaseLogger = None):
         self.model = model
         self.train_loader = train_loader
         self.config = config
+        self.logger = logger
         
         # Losses
         self.kl_loss = KLDivLoss(config.get('losses', {}))
@@ -60,8 +62,22 @@ class Trainer:
                 self.optimizer.step()
                 
                 total_loss += loss.item()
+                global_step = epoch * len(self.train_loader) + batch_idx
                 
                 if batch_idx % 10 == 0:
-                    print(f"Epoch {epoch} | Batch {batch_idx} | Loss: {loss.item():.4f}")
+                    msg = f"Epoch {epoch} | Batch {batch_idx} | Total Loss: {loss.item():.4f} | KL: {kl.item():.4f} | Unc: {unc.item():.4f}"
+                    if self.logger:
+                        self.logger.info(msg)
+                        self.logger.log_scalar('train/total_loss', loss.item(), global_step)
+                        self.logger.log_scalar('train/kl_loss', kl.item(), global_step)
+                        self.logger.log_scalar('train/unc_loss', unc.item(), global_step)
+                    else:
+                        print(msg)
                     
-            print(f"Epoch {epoch} completed. Average Loss: {total_loss / len(self.train_loader):.4f}")
+            avg_loss = total_loss / len(self.train_loader)
+            msg = f"Epoch {epoch} completed. Average Loss: {avg_loss:.4f}"
+            if self.logger:
+                self.logger.info(msg)
+                self.logger.log_scalar('train/epoch_loss', avg_loss, epoch)
+            else:
+                print(msg)

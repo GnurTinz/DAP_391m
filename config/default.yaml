@@ -35,3 +35,9 @@ training:
 sampling:
   method: "monte_carlo" # options: 'monte_carlo', 'hard_negative', 'gaussian_shift'
   num_samples: 10
+
+logging:
+  log_dir: "logs/experiments"
+  experiment_name: "palmprint_run_v1"
+  enable_tensorboard: true
+

@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.datasets.palm_dataset import PalmPrintDataset
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.trainer import Trainer
+from src.utils.logger import BaseLogger
 
 def load_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
@@ -24,7 +25,11 @@ def main():
     print(f"Loading config from {config_path}...")
     config = load_config(config_path)
     
-    print("Initializing Dataset...")
+    # Initialize Logger
+    logger = BaseLogger(config.get('logging', {}))
+    logger.info("Configuration loaded.")
+    
+    logger.info("Initializing Dataset...")
     train_dataset = PalmPrintDataset(
         data_dir=config['dataset']['data_dir'],
         config=config['dataset'],
@@ -38,16 +43,19 @@ def main():
         num_workers=0 # Set to 0 for mock run
     )
     
-    print("Initializing Model...")
+    logger.info("Initializing Model...")
     model = ProbabilisticPalmModel(config['model'])
     
-    print("Initializing Trainer...")
-    trainer = Trainer(model, train_loader, config)
+    logger.info("Initializing Trainer...")
+    trainer = Trainer(model, train_loader, config, logger=logger)
     
-    print("Dry run completed successfully! All modules initialized.")
+    logger.info("Dry run completed successfully! All modules initialized.")
     # uncomment to run 1 epoch test
     # trainer.epochs = 1
     # trainer.train()
+    
+    # Close logger
+    logger.close()
 
 if __name__ == "__main__":
     main()
