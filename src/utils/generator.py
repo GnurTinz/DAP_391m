@@ -213,8 +213,17 @@ class ImageGenerator:
                 z_dec = self.model.fc_dec(z_batch)
                 z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
                 
-                u1 = self.model.up1(z_dec, torch.ones_like(x3))
-                u2 = self.model.up2(u1, x2)
+                # FiLM modulation
+                gamma3 = self.model.film_gamma3(z_batch).view(-1, 256, 1, 1)
+                beta3 = self.model.film_beta3(z_batch).view(-1, 256, 1, 1)
+                modulated_x3 = (1 + gamma3) * x3 + beta3
+                
+                gamma2 = self.model.film_gamma2(z_batch).view(-1, 128, 1, 1)
+                beta2 = self.model.film_beta2(z_batch).view(-1, 128, 1, 1)
+                modulated_x2 = (1 + gamma2) * x2 + beta2
+                
+                u1 = self.model.up1(z_dec, modulated_x3)
+                u2 = self.model.up2(u1, modulated_x2)
                 u3 = self.model.up3(u2, x1)
                 x_hat = self.model.outc(u3)
                 

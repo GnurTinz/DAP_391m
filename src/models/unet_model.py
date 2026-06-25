@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .base import BaseModel
+from .encoder import PalmEncoder
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -83,9 +84,18 @@ class UNetPalmModel(BaseModel):
         self.flatten_size = 512 * self.bottleneck_size * self.bottleneck_size
         
         # --- PROBABILISTIC BOTTLENECK ---
-        self.norm_flat = nn.LayerNorm(self.flatten_size)
-        self.fc_mu = nn.Linear(self.flatten_size, self.latent_dim)
-        self.fc_logvar = nn.Linear(self.flatten_size, self.latent_dim)
+        # Sử dụng một mạng riêng biệt (Latent Encoder) để trích xuất mu và logvar
+        # thay vì dùng chung thân mạng U-Net
+        self.latent_encoder = PalmEncoder(config.get('encoder', {}))
+        
+        # --- FiLM MODULATION LAYERS ---
+        # Điều khiển skip connection x3 (256 channels)
+        self.film_gamma3 = nn.Linear(self.latent_dim, 256)
+        self.film_beta3 = nn.Linear(self.latent_dim, 256)
+        
+        # Điều khiển skip connection x2 (128 channels)
+        self.film_gamma2 = nn.Linear(self.latent_dim, 128)
+        self.film_beta2 = nn.Linear(self.latent_dim, 128)
         
         # Light MLP for Contrastive Loss
         self.projector = nn.Sequential(
@@ -112,17 +122,8 @@ class UNetPalmModel(BaseModel):
         return mu + eps * std * temperature
 
     def forward(self, x, decode=False, temperature=1.0):
-        # Encoder (Lưu lại skip connections)
-        x1 = self.inc(x)       # Skip 1 (64 channels)
-        x2 = self.down1(x1)    # Skip 2 (128 channels)
-        x3 = self.down2(x2)    # Skip 3 (256 channels)
-        x4 = self.down3(x3)    # Bottleneck input (512 channels)
-        
-        # Bottleneck (Probabilistic)
-        x4_flat = x4.view(x4.size(0), -1)
-        x4_flat = self.norm_flat(x4_flat)
-        mu = self.fc_mu(x4_flat)
-        logvar = self.fc_logvar(x4_flat)
+        # 1. Trích xuất Latent distribution từ mạng riêng (Posterior/Prior Network)
+        mu, logvar = self.latent_encoder(x)
         
         # Bóp logvar về biên an toàn để chống bùng nổ hàm mũ exp(logvar) trong KL loss 
         # và chống nhiễu loạn không gian latent z
@@ -138,19 +139,29 @@ class UNetPalmModel(BaseModel):
         }
         
         if decode and self.use_decoder:
+            # 2. Trích xuất Spatial Features từ Deterministic U-Net Encoder
+            x1 = self.inc(x)       # Skip 1 (64 channels)
+            x2 = self.down1(x1)    # Skip 2 (128 channels)
+            x3 = self.down2(x2)    # Skip 3 (256 channels)
+            # x4 = self.down3(x3)  # Bỏ qua vì không còn dùng làm bottleneck
+            
             # Giải mã từ latent z
             z_dec = self.fc_dec(z)
             z_dec = z_dec.view(-1, 512, self.bottleneck_size, self.bottleneck_size)
             
-            # Kết hợp với skip connections từ encoder
-            # Áp dụng Dropout2d để triệt tiêu ngẫu nhiên một số kênh đặc trưng (feature maps)
-            # Buộc Decoder phải phụ thuộc vào z để giải mã, chống Posterior Collapse
-            d_x3 = self.skip_dropout(x3)
-            d_x2 = self.skip_dropout(x2)
+            # 3. Kết hợp z vào U-Net thông qua FiLM để điều khiển skip connections
+            gamma3 = self.film_gamma3(z).view(-1, 256, 1, 1)
+            beta3 = self.film_beta3(z).view(-1, 256, 1, 1)
+            modulated_x3 = (1 + gamma3) * x3 + beta3
+            
+            gamma2 = self.film_gamma2(z).view(-1, 128, 1, 1)
+            beta2 = self.film_beta2(z).view(-1, 128, 1, 1)
+            modulated_x2 = (1 + gamma2) * x2 + beta2
+            
             d_x1 = self.skip_dropout(x1)
             
-            u1 = self.up1(z_dec, d_x3)
-            u2 = self.up2(u1, d_x2)
+            u1 = self.up1(z_dec, modulated_x3)
+            u2 = self.up2(u1, modulated_x2)
             u3 = self.up3(u2, d_x1)
             
             x_hat = self.outc(u3)
