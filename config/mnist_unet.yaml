@@ -7,13 +7,13 @@ dataset:
 model:
   type: "unet"
   encoder:
-    # backbone: "mock" # Dùng mock encoder vì ảnh nhỏ 32x32
+    backbone: "mock" # Dùng mock encoder vì ảnh nhỏ 32x32
     latent_dim: 128
     # pretrained: false
   decoder:
     # type: "resnet"
     use_decoder: true
-    skip_dropout: 0.75
+    skip_dropout: 0.2
     # latent_dim: 128
     image_size: [32, 32]
     # hidden_dims: [128, 64, 32]

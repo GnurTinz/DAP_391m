@@ -22,6 +22,26 @@ class PalmEncoder(BaseModel):
                 nn.Flatten()
             )
             in_features = 64
+        elif backbone_name == 'cnn':
+            hidden_dims = self.config.get('hidden_dims', [32, 64, 128, 256])
+            modules = []
+            in_channels = 3
+            for h_dim in hidden_dims:
+                modules.append(
+                    nn.Sequential(
+                        nn.Conv2d(in_channels, h_dim, kernel_size=3, stride=2, padding=1, bias=False),
+                        nn.BatchNorm2d(h_dim),
+                        nn.LeakyReLU(0.2, inplace=True)
+                    )
+                )
+                in_channels = h_dim
+            
+            self.backbone = nn.Sequential(
+                *modules,
+                nn.AdaptiveAvgPool2d((1, 1)),
+                nn.Flatten()
+            )
+            in_features = hidden_dims[-1]
         elif hasattr(models, backbone_name):
             # Dynamic loading from torchvision
             model_func = getattr(models, backbone_name)

@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.datasets.palm_dataset import PalmPrintDataset
+from src.datasets import DatasetFactory
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.trainer import Trainer
 from src.utils.logger import BaseLogger
@@ -30,11 +30,23 @@ def main():
     logger.info("Configuration loaded.")
     
     logger.info("Initializing Dataset...")
-    train_dataset = PalmPrintDataset(
-        data_dir=config['dataset']['data_dir'],
-        config=config['dataset'],
-        is_train=True
-    )
+    dataset_name = config.get('dataset', {}).get('name', 'PalmPrintDataset')
+    # For backward compatibility with old configs
+    if dataset_name.upper() == 'POLYU':
+        dataset_name = 'PalmPrintDataset'
+    elif dataset_name.upper() == 'MNIST':
+        dataset_name = 'MNISTDataset'
+        
+    try:
+        train_dataset = DatasetFactory.create(
+            dataset_name,
+            data_dir=config['dataset']['data_dir'],
+            config=config['dataset'],
+            is_train=True
+        )
+    except ValueError as e:
+        logger.error(str(e))
+        return
     
     train_loader = DataLoader(
         train_dataset, 

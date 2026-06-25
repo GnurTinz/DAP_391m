@@ -1,0 +1,41 @@
+dataset:
+  name: "OwnDataset"
+  data_dir: "data/scripts/script1" # Điền đường dẫn tới thư mục dataset ở đây (ví dụ data/scripts/script1)
+  image_size: [32, 32]
+  open_set_ratio: 0.0
+
+model:
+  type: "unet"
+  encoder:
+    backbone: "mock" # Dùng mock encoder để test nhanh ảnh nhỏ
+    latent_dim: 128
+    pretrained: false
+  decoder:
+    use_decoder: true
+    skip_dropout: 0.2
+    image_size: [32, 32]
+  verifier:
+    hidden_dims: [256, 128]
+  projector:
+    proj_dim: 64
+
+generation:
+  mode: "latent_sampling"
+  num_images: 8
+  temperature: 10
+
+training:
+  batch_size: 64
+  epochs: 30
+  lr: 0.0002
+  kl_weight: 0.1
+  contrastive_weight: 0.05
+  log_interval: 10
+  save_interval: 1
+  device: "cpu" # Default to cpu for testing
+  use_sampler: false
+
+logging:
+  log_dir: "logs/experiments"
+  experiment_name: "own_unet_train"
+  enable_tensorboard: false

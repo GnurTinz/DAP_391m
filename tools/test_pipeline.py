@@ -12,8 +12,7 @@ import numpy as np
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from src.datasets.palm_dataset import PalmPrintDataset
-from src.datasets.mnist_dataset import MNISTDataset
+from src.datasets import DatasetFactory
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.represent import optimize_r_from_latent
 
@@ -318,12 +317,16 @@ def main():
     num_workers = config.get('testing', {}).get('num_workers', 2)
     
     logger.info(f"Loading {dataset_name} dataset from {data_dir}...")
-    if dataset_name.upper() == 'MNIST':
-        test_dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
-    elif dataset_name.upper() == 'POLYU':
-        test_dataset = PalmPrintDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
-    else:
-        logger.error(f"Dataset {dataset_name} not supported!")
+    # For backward compatibility with old configs
+    if dataset_name.upper() == 'POLYU':
+        dataset_name = 'PalmPrintDataset'
+    elif dataset_name.upper() == 'MNIST':
+        dataset_name = 'MNISTDataset'
+        
+    try:
+        test_dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
+    except ValueError as e:
+        logger.error(str(e))
         return
 
     # Simulate Gallery and Query splits

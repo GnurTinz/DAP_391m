@@ -18,8 +18,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from src.datasets.palm_dataset import PalmPrintDataset
-from src.datasets.mnist_dataset import MNISTDataset
+from src.datasets import DatasetFactory
 from src.datasets.sampler import get_sampler
 from src.models.palm_model import ProbabilisticPalmModel
 from src.engine.trainer import Trainer
@@ -288,15 +287,20 @@ def main():
     batch_size = config.get('training', {}).get('batch_size', 32)
     num_workers = config.get('training', {}).get('num_workers', 4)
     
-    dataset_name = config.get('dataset', {}).get('name', 'PolyU')
-    if dataset_name.upper() == 'MNIST':
-        train_dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
-        val_dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
-    elif dataset_name.upper() == 'POLYU':
-        train_dataset = PalmPrintDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
-        val_dataset = PalmPrintDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
-    else:
-        raise ValueError(f"Dataset {dataset_name} không được hỗ trợ!")
+    dataset_name = config.get('dataset', {}).get('name', 'PalmPrintDataset')
+    
+    # For backward compatibility with old configs
+    if dataset_name.upper() == 'POLYU':
+        dataset_name = 'PalmPrintDataset'
+    elif dataset_name.upper() == 'MNIST':
+        dataset_name = 'MNISTDataset'
+        
+    try:
+        train_dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
+        val_dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
+    except ValueError as e:
+        logger.error(str(e))
+        raise
 
     # Sampler setup
     use_sampler = config.get('training', {}).get('use_sampler', True)

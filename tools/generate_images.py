@@ -6,9 +6,8 @@ from torch.utils.data import DataLoader
 
 from src.models.palm_model import ProbabilisticPalmModel
 from src.models.unet_model import UNetPalmModel
-from src.datasets.mnist_dataset import MNISTDataset
+from src.datasets import DatasetFactory
 from src.utils.generator import ImageGenerator
-# Thêm import cho PalmDataset nếu dùng
 
 def main():
     parser = argparse.ArgumentParser(description="Generate or Sample (Reconstruct) images from trained model")
@@ -71,7 +70,15 @@ def main():
     if mode in ['reconstruct', 'variations', 'contrastive', 'latent_sampling']:
         print(f"Đang tải dữ liệu để lấy mẫu gốc cho mode '{mode}'...")
         data_dir = config.get('dataset', {}).get('data_dir', 'data/MNIST')
-        dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
+        dataset_name = config.get('dataset', {}).get('name', 'MNISTDataset')
+        
+        # For backward compatibility with old configs
+        if dataset_name.upper() == 'POLYU':
+            dataset_name = 'PalmPrintDataset'
+        elif dataset_name.upper() == 'MNIST':
+            dataset_name = 'MNISTDataset'
+            
+        dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
         
         if mode == 'contrastive':
             bs = 64

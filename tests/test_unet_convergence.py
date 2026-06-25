@@ -113,7 +113,7 @@ class TestUNetConvergence(unittest.TestCase):
         kl_loss_fn = KLDivLoss({})
         supcon_loss_fn = SupConLoss({'temperature': 0.1})
         
-        os.makedirs("tmp/MNIST", exist_ok=True)
+        os.makedirs("data/MNIST", exist_ok=True)
         # Tải MNIST
         dataset = MNISTDataset(data_dir="data/MNIST", config={"image_size": [32, 32]}, is_train=True)
         
