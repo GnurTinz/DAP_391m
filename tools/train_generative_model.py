@@ -30,8 +30,9 @@ class GenerativeTrainer(Trainer):
     """
     Kế thừa từ Trainer để train riêng VAE + Contrastive Loss.
     """
-    def __init__(self, model, train_loader, config, logger=None, writer=None, device='cpu', ckpt_prefix='vae_con_model'):
+    def __init__(self, model, train_loader, val_loader, config, logger=None, writer=None, device='cpu', ckpt_prefix='vae_con_model'):
         super().__init__(model, train_loader, config, logger)
+        self.val_loader = val_loader
         self.writer = writer
         self.device = device
         self.ckpt_prefix = ckpt_prefix
@@ -49,13 +50,13 @@ class GenerativeTrainer(Trainer):
         self.best_loss = float('inf')
 
     def train(self):
-        self.model.train()
         best_loss = self.best_loss
         os.makedirs(os.path.join('logs', 'checkpoints'), exist_ok=True)
         log_interval = self.config.get('training', {}).get('log_interval', 10)
         save_interval = self.config.get('training', {}).get('save_interval', 1)
         
         for epoch in range(self.start_epoch, self.epochs):
+            self.model.train() # Đảm bảo chế độ train
             # Update loss weights for the epoch if any scheduler only uses epoch
             weights = self.loss_scheduler.get_weights(epoch)
             if 'beta_kl' in weights: self.beta_kl = weights['beta_kl']
@@ -149,9 +150,9 @@ class GenerativeTrainer(Trainer):
             # Tổng kết trung bình mỗi epoch
             avg_loss = epoch_loss / len(self.train_loader)
             if self.logger:
-                self.logger.info(f"Epoch [{epoch+1}/{self.epochs}] | Avg Loss: {avg_loss:.4f}")
+                self.logger.info(f"Epoch [{epoch+1}/{self.epochs}] | Avg Train Loss: {avg_loss:.4f}")
             else:
-                print(f"Epoch [{epoch+1}/{self.epochs}] | Avg Loss: {avg_loss:.4f}")
+                print(f"Epoch [{epoch+1}/{self.epochs}] | Avg Train Loss: {avg_loss:.4f}")
                 
             if self.writer:
                 self.writer.add_scalar('Epoch/Total_Loss', avg_loss, epoch)
@@ -162,9 +163,49 @@ class GenerativeTrainer(Trainer):
                     self.writer.add_images('Epoch/Original_Images', log_images, epoch)
                     self.writer.add_images('Epoch/Reconstructed_Images', log_xhat, epoch)
 
+            # Validation
+            val_loss = 0.0
+            if self.val_loader:
+                self.model.eval() # Đảm bảo chế độ eval
+                val_epoch_loss = 0.0
+                with torch.no_grad():
+                    for val_images, val_labels in self.val_loader:
+                        val_images, val_labels = val_images.to(self.device), val_labels.to(self.device)
+                        val_outputs = self.model(val_images, decode=True)
+                        val_mu, val_logvar = val_outputs['mu'], val_outputs['logvar']
+                        
+                        v_kl = self.kl_loss(val_mu, val_logvar)
+                        v_unc = self.unc_loss(val_logvar)
+                        v_total = self.beta_kl * v_kl + self.lambda_unc * v_unc
+                        
+                        if 'x_hat' in val_outputs:
+                            v_rec = self.rec_loss(val_images, val_outputs['x_hat'])
+                            v_total += self.lambda_rec * v_rec
+                            
+                        if 'proj' in val_outputs:
+                            v_con = self.supcon_loss(val_outputs['proj'], val_labels)
+                            v_total += self.lambda_con * v_con
+                            
+                        val_epoch_loss += v_total.item()
+                val_loss = val_epoch_loss / len(self.val_loader)
+                
+                if self.logger:
+                    self.logger.info(f"Epoch [{epoch+1}/{self.epochs}] | Avg Val Loss: {val_loss:.4f}")
+                else:
+                    print(f"Epoch [{epoch+1}/{self.epochs}] | Avg Val Loss: {val_loss:.4f}")
+                    
+                if self.writer:
+                    self.writer.add_scalar('Epoch/Val_Total_Loss', val_loss, epoch)
+                    if 'x_hat' in val_outputs:
+                        val_log_images = (val_images[:4] + 1) / 2.0
+                        val_log_xhat = (val_outputs['x_hat'][:4] + 1) / 2.0
+                        self.writer.add_images('Epoch/Val_Original_Images', val_log_images, epoch)
+                        self.writer.add_images('Epoch/Val_Reconstructed_Images', val_log_xhat, epoch)
+
             # Checkpoint best
-            if avg_loss < best_loss:
-                best_loss = avg_loss
+            current_metric = val_loss if self.val_loader else avg_loss
+            if current_metric < best_loss:
+                best_loss = current_metric
                 best_path = os.path.join('logs', 'checkpoints', f"{self.ckpt_prefix}_best.pth")
                 torch.save({
                     'epoch': epoch,
@@ -250,8 +291,10 @@ def main():
     dataset_name = config.get('dataset', {}).get('name', 'PolyU')
     if dataset_name.upper() == 'MNIST':
         train_dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
+        val_dataset = MNISTDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
     elif dataset_name.upper() == 'POLYU':
         train_dataset = PalmPrintDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=True)
+        val_dataset = PalmPrintDataset(data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
     else:
         raise ValueError(f"Dataset {dataset_name} không được hỗ trợ!")
 
@@ -285,6 +328,13 @@ def main():
             shuffle=True, 
             num_workers=num_workers
         )
+        
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers
+    )
 
     # Model
     model_config = config.get('model', {})
@@ -313,6 +363,7 @@ def main():
     trainer = GenerativeTrainer(
         model=model,
         train_loader=train_loader,
+        val_loader=val_loader,
         config=config,
         logger=logger,
         writer=writer,
