@@ -82,6 +82,7 @@ class UNetPalmModel(BaseModel):
         self.flatten_size = 512 * self.bottleneck_size * self.bottleneck_size
         
         # --- PROBABILISTIC BOTTLENECK ---
+        self.norm_flat = nn.LayerNorm(self.flatten_size)
         self.fc_mu = nn.Linear(self.flatten_size, self.latent_dim)
         self.fc_logvar = nn.Linear(self.flatten_size, self.latent_dim)
         
@@ -117,6 +118,7 @@ class UNetPalmModel(BaseModel):
         
         # Bottleneck (Probabilistic)
         x4_flat = x4.view(x4.size(0), -1)
+        x4_flat = self.norm_flat(x4_flat)
         mu = self.fc_mu(x4_flat)
         logvar = self.fc_logvar(x4_flat)
         
