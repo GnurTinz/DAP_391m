@@ -213,7 +213,7 @@ class ImageGenerator:
                 z_dec = self.model.fc_dec(z_batch)
                 z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
                 
-                u1 = self.model.up1(z_dec, x3)
+                u1 = self.model.up1(z_dec, torch.ones_like(x3))
                 u2 = self.model.up2(u1, x2)
                 u3 = self.model.up3(u2, x1)
                 x_hat = self.model.outc(u3)
