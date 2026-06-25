@@ -39,6 +39,10 @@ class GenerativeLightningModule(pl.LightningModule):
         self.lambda_rec = loss_cfg.get('lambda_rec', 1.0)
         self.lambda_unc = loss_cfg.get('lambda_unc', 0.1)
         self.lambda_con = loss_cfg.get('lambda_con', 0.5)
+        
+        # Cung cấp tensor mẫu để PyTorch Lightning ghi cấu trúc mạng ra TensorBoard
+        img_size = config.get('dataset', {}).get('image_size', [128, 128])
+        self.example_input_array = torch.randn(1, 3, img_size[0], img_size[1])
 
     def forward(self, x, decode=True):
         return self.model(x, decode=decode)

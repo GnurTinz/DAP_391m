@@ -50,7 +50,8 @@ def main(cfg: DictConfig):
     if cfg.logging.enable_tensorboard:
         logger = TensorBoardLogger(
             save_dir=cfg.logging.log_dir,
-            name=cfg.logging.experiment_name
+            name=cfg.logging.experiment_name,
+            log_graph=True
         )
 
     # Initialize Trainer
