@@ -188,14 +188,33 @@ class ImageGenerator:
             # Các mẫu tiếp theo
             for i in range(1, num_images):
                 if i < num_images // 2:
-                    # Mẫu giống (Nhiễu chuẩn N(0,1) * std)
+                    # 1. MẪU GIỐNG (POSITIVE / IN-DISTRIBUTION)
+                    # Contrastive Loss ép mu thành cụm định danh. 
+                    # Để lấy mẫu giống, ta chỉ lấy mẫu nội bộ trong bán kính sigma (độ bất định).
+                    # Dùng temperature (tau) <= 1.0 để không văng khỏi cụm.
+                    tau = 0.5 + (i * 0.1) # Tăng nhẹ độ đa dạng nhưng vẫn giữ danh tính
                     eps = torch.randn_like(std)
-                    z_list.append(mu + eps * std)
+                    z_pos = mu + tau * eps * std
+                    z_list.append(z_pos)
                 else:
-                    # Mẫu khác (Nhiễu khuếch đại cực đại, ép mô hình lệch khỏi cụm identity)
+                    # 2. MẪU KHÁC (NEGATIVE / OUT-OF-DISTRIBUTION)
+                    # Do Contrastive Loss hoạt động trên mu, các danh tính khác nhau sẽ bị đẩy ra xa.
+                    # Cách A: Lật ngược cụm định danh (Opposite Identity) bằng cách lấy đối xứng qua gốc (-mu).
+                    # Cách B: Cộng một lượng nhiễu có độ lớn vượt qua biên giới Contrastive (Margin).
+                    
+                    # Ở đây đề xuất kết hợp: Lấy -mu (đẩy ra xa nhất có thể) + độ bất định sigma
                     eps = torch.randn_like(std)
-                    temperature = 4.0 + i  # Tăng dần độ nhiễu
-                    z_list.append(mu + eps * std * temperature)
+                    tau_neg = 2.0 # Bơm thêm nhiễu để tạo sự khác biệt cấu trúc
+                    
+                    # Nếu i chẵn thì dùng cách lật -mu, nếu lẻ thì dùng nhiễu cực đại đẩy văng khỏi mu
+                    if i % 2 == 0:
+                        z_neg = -mu + tau_neg * eps * std
+                    else:
+                        # Văng ra khỏi cụm bằng cách nhân khoảng cách lớn (Margin Factor)
+                        margin_factor = 5.0 + i
+                        z_neg = mu + margin_factor * eps * std
+                        
+                    z_list.append(z_neg)
                     
             z_batch = torch.cat(z_list, dim=0)
             

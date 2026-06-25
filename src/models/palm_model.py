@@ -25,8 +25,6 @@ class ProbabilisticPalmModel(BaseModel):
         latent_dim = config.get('encoder', {}).get('latent_dim', 256)
         proj_dim = config.get('projector', {}).get('proj_dim', 128)
         self.projector = nn.Sequential(
-            nn.Linear(latent_dim, latent_dim),
-            nn.ReLU(),
             nn.Linear(latent_dim, proj_dim)
         )
 

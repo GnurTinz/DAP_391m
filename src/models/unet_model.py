@@ -97,10 +97,8 @@ class UNetPalmModel(BaseModel):
         self.film_gamma2 = nn.Linear(self.latent_dim, 128)
         self.film_beta2 = nn.Linear(self.latent_dim, 128)
         
-        # Light MLP for Contrastive Loss
+        # Light MLP for Contrastive Loss (1-layer)
         self.projector = nn.Sequential(
-            nn.Linear(self.latent_dim, self.latent_dim),
-            nn.ReLU(),
             nn.Linear(self.latent_dim, self.proj_dim)
         )
         

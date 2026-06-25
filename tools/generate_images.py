@@ -1,5 +1,12 @@
 import torch
+from torch.utils.data import DataLoader
 import hydra
+import os
+import sys
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from omegaconf import DictConfig, OmegaConf
 
 from src.models.palm_model import ProbabilisticPalmModel
@@ -61,7 +68,18 @@ def main(cfg: DictConfig):
     # 2. Tải trọng số
     if checkpoint_path and os.path.exists(checkpoint_path):
         checkpoint_data = torch.load(checkpoint_path, map_location=device)
-        model.load_state_dict(checkpoint_data.get('model_state_dict', checkpoint_data.get('state_dict', checkpoint_data)))
+        state_dict = checkpoint_data.get('model_state_dict', checkpoint_data.get('state_dict', checkpoint_data))
+        
+        # PyTorch Lightning lưu checkpoint kèm prefix "model." do class GenerativeLightningModule bọc model bên trong
+        # Ta cần loại bỏ prefix này trước khi load vào UNetPalmModel / ProbabilisticPalmModel
+        clean_state_dict = {}
+        for k, v in state_dict.items():
+            if k.startswith('model.'):
+                clean_state_dict[k[6:]] = v
+            else:
+                clean_state_dict[k] = v
+                
+        model.load_state_dict(clean_state_dict, strict=False)
         print(f"Đã nạp trọng số từ: {checkpoint_path}")
     else:
         print("CẢNH BÁO: Chưa cung cấp checkpoint hợp lệ. Ảnh xuất ra sẽ là nhiễu ngẫu nhiên chưa qua huấn luyện.")
