@@ -19,22 +19,77 @@ class PalmDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
-            full_dataset = DatasetFactory.create(
-                self.dataset_name, 
-                data_dir=self.data_dir, 
-                config=self.dataset_cfg, 
-                is_train=True
-            )
+            split_mode = self.dataset_cfg.get('split_mode', 'ratio')
             
-            train_size = int(0.9 * len(full_dataset))
-            val_size = len(full_dataset) - train_size
-            
-            # Using fixed generator for reproducible splits
-            self.train_dataset, self.val_dataset = random_split(
-                full_dataset, 
-                [train_size, val_size],
-                generator=torch.Generator().manual_seed(42)
-            )
+            if split_mode == 'ratio':
+                full_dataset = DatasetFactory.create(
+                    self.dataset_name, 
+                    data_dir=self.data_dir, 
+                    config=self.dataset_cfg, 
+                    is_train=True
+                )
+                
+                train_ratio = self.dataset_cfg.get('train_ratio', 0.9)
+                train_size = int(train_ratio * len(full_dataset))
+                val_size = len(full_dataset) - train_size
+                
+                print("-" * 50)
+                print(f"[DATASET INFO] Tên Dataset: {self.dataset_name}")
+                print(f"[DATASET INFO] Thư mục: {self.data_dir}")
+                print(f"[DATASET INFO] Tổng số mẫu: {len(full_dataset)}")
+                
+                if hasattr(full_dataset, 'classes'):
+                    print(f"[DATASET INFO] Số lượng nhãn: {len(full_dataset.classes)}")
+                    # print(f"[DATASET INFO] Danh sách nhãn: {full_dataset.classes}")
+                elif hasattr(full_dataset, 'class_to_idx'):
+                    print(f"[DATASET INFO] Số lượng nhãn: {len(full_dataset.class_to_idx)}")
+                    
+                print(f"[DATASET INFO] Split Mode: Ratio")
+                print(f"[DATASET INFO] Tập Train: {train_size} samples")
+                print(f"[DATASET INFO] Tập Val: {val_size} samples")
+                print("-" * 50)
+                
+                # Using fixed generator for reproducible splits
+                self.train_dataset, self.val_dataset = random_split(
+                    full_dataset, 
+                    [train_size, val_size],
+                    generator=torch.Generator().manual_seed(42)
+                )
+                
+            elif split_mode == 'hand':
+                train_hand = self.dataset_cfg.get('train_hand', 'left')
+                val_hand = self.dataset_cfg.get('val_hand', 'right')
+                
+                train_cfg = self.dataset_cfg.copy()
+                train_cfg['hand_filter'] = train_hand
+                
+                val_cfg = self.dataset_cfg.copy()
+                val_cfg['hand_filter'] = val_hand
+                
+                self.train_dataset = DatasetFactory.create(
+                    self.dataset_name, 
+                    data_dir=self.data_dir, 
+                    config=train_cfg, 
+                    is_train=True
+                )
+                
+                self.val_dataset = DatasetFactory.create(
+                    self.dataset_name, 
+                    data_dir=self.data_dir, 
+                    config=val_cfg, 
+                    is_train=False
+                )
+                
+                print("-" * 50)
+                print(f"[DATASET INFO] Tên Dataset: {self.dataset_name}")
+                print(f"[DATASET INFO] Thư mục: {self.data_dir}")
+                if hasattr(self.train_dataset, 'classes'):
+                    print(f"[DATASET INFO] Số lượng nhãn: {len(self.train_dataset.classes)}")
+                    
+                print(f"[DATASET INFO] Split Mode: Hand (Train: {train_hand}, Val: {val_hand})")
+                print(f"[DATASET INFO] Tập Train: {len(self.train_dataset)} samples")
+                print(f"[DATASET INFO] Tập Val: {len(self.val_dataset)} samples")
+                print("-" * 50)
 
     def train_dataloader(self):
         use_sampler = self.train_cfg.get('use_sampler', False)

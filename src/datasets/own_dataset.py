@@ -43,17 +43,24 @@ class OwnDataset(BaseDataset):
             print(f"Warning: Directory {self.data_dir} does not exist. (Skipping data load for dry run)")
             return
 
-        # Lọc ra các thư mục con (chính là các class)
         self.classes = sorted([d for d in os.listdir(self.data_dir) if os.path.isdir(os.path.join(self.data_dir, d))])
         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)}
         
+        hand_filter = self.config.get('hand_filter', 'both')
+        
         for cls_name in self.classes:
             cls_dir = os.path.join(self.data_dir, cls_name)
+            
+            subdirs = ['left', 'right'] if hand_filter == 'both' else [hand_filter]
+            for subdir in subdirs:
+                hand_dir = os.path.join(cls_dir, subdir)
+                if not os.path.isdir(hand_dir):
+                    continue
                 
-            for img_name in os.listdir(cls_dir):
-                if img_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
-                    img_path = os.path.join(cls_dir, img_name)
-                    self.samples.append((img_path, self.class_to_idx[cls_name]))
+                for img_name in os.listdir(hand_dir):
+                    if img_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                        img_path = os.path.join(hand_dir, img_name)
+                        self.samples.append((img_path, self.class_to_idx[cls_name]))
 
     def __len__(self) -> int:
         return len(self.samples) if len(self.samples) > 0 else 100 # Mock length for dry run

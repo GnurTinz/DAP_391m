@@ -9,6 +9,10 @@ hydra:
   run:
     dir: .
   output_subdir: null
+  job_logging:
+    handlers:
+      file:
+        filename: logs/${hydra.job.name}.log
 
 checkpoint: ""
 output: "" # Để trống để Python script tự động map vào version_X hoặc logs/unversioned_results
