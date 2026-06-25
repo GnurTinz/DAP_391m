@@ -56,7 +56,7 @@ class GenerativeTrainer(Trainer):
         save_interval = self.config.get('training', {}).get('save_interval', 1)
         
         for epoch in range(self.start_epoch, self.epochs):
-            # Update loss weights for the epoch
+            # Update loss weights for the epoch if any scheduler only uses epoch
             weights = self.loss_scheduler.get_weights(epoch)
             if 'beta_kl' in weights: self.beta_kl = weights['beta_kl']
             if 'lambda_rec' in weights: self.lambda_rec = weights['lambda_rec']
@@ -82,6 +82,15 @@ class GenerativeTrainer(Trainer):
                         
                 images, labels = images.to(self.device), labels.to(self.device)
                 
+                global_step = epoch * len(self.train_loader) + batch_idx
+                
+                # Update weights for this step
+                step_weights = self.loss_scheduler.get_weights(epoch, global_step)
+                if 'beta_kl' in step_weights: self.beta_kl = step_weights['beta_kl']
+                if 'lambda_rec' in step_weights: self.lambda_rec = step_weights['lambda_rec']
+                if 'lambda_con' in step_weights: self.lambda_con = step_weights['lambda_con']
+                if 'lambda_unc' in step_weights: self.lambda_unc = step_weights['lambda_unc']
+
                 self.optimizer.zero_grad()
                 
                 # Forward
@@ -110,7 +119,6 @@ class GenerativeTrainer(Trainer):
                 self.optimizer.step()
                 
                 epoch_loss += total_loss.item()
-                global_step = epoch * len(self.train_loader) + batch_idx
                 
                 pbar.set_postfix({
                     'Total': f"{total_loss.item():.4f}",
@@ -130,6 +138,12 @@ class GenerativeTrainer(Trainer):
                         self.writer.add_scalar('Batch/Recon_Loss', rec.item(), global_step)
                         self.writer.add_scalar('Batch/KL_Loss', kl.item(), global_step)
                         self.writer.add_scalar('Batch/Con_Loss', con.item(), global_step)
+                        
+                        # Log the running lambdas
+                        self.writer.add_scalar('Weights/beta_kl', self.beta_kl, global_step)
+                        self.writer.add_scalar('Weights/lambda_rec', self.lambda_rec, global_step)
+                        self.writer.add_scalar('Weights/lambda_con', self.lambda_con, global_step)
+                        self.writer.add_scalar('Weights/lambda_unc', self.lambda_unc, global_step)
 
             # Tổng kết trung bình mỗi epoch
             avg_loss = epoch_loss / len(self.train_loader)
@@ -233,15 +247,13 @@ def main():
         sampler_type = config.get('training', {}).get('sampler_type', 'pk_sampler')
         p = config.get('training', {}).get('sampler_p', None)
         k = config.get('training', {}).get('sampler_k', None)
-        num_classes = config.get('training', {}).get('sampler_num_classes', None)
         
         try:
             sampler = get_sampler(
                 sampler_type=sampler_type, 
                 labels=train_dataset.get_labels(), 
                 batch_size=batch_size, 
-                p=p, k=k, 
-                num_classes=num_classes
+                p=p, k=k
             )
             train_loader = DataLoader(
                 train_dataset, 

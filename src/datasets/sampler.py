@@ -38,36 +38,6 @@ class PKSampler(Sampler):
     def __len__(self):
         return self.num_batches
 
-class RandomClassSampler(Sampler):
-    """
-    Samples C random classes and includes ALL their instances in the batch.
-    Good for datasets where instance counts per class vary greatly (N-pair loss).
-    """
-    def __init__(self, labels, num_classes_per_batch=4):
-        self.num_classes = num_classes_per_batch
-        self.labels = np.array(labels)
-        
-        self.label_to_indices = defaultdict(list)
-        for idx, label in enumerate(self.labels):
-            self.label_to_indices[label].append(idx)
-            
-        self.identities = list(self.label_to_indices.keys())
-        self.num_batches = max(1, len(self.labels) // 32) # estimate batch size
-        
-    def __iter__(self):
-        for _ in range(self.num_batches):
-            batch = []
-            replace_c = len(self.identities) < self.num_classes
-            classes = np.random.choice(self.identities, size=self.num_classes, replace=replace_c)
-            
-            for c in classes:
-                batch.extend(self.label_to_indices[c])
-                
-            yield batch
-            
-    def __len__(self):
-        return self.num_batches
-
 class WeightedClassSampler(Sampler):
     """
     Standard WeightedRandomSampler approach but wrapped as a BatchSampler.
@@ -99,7 +69,7 @@ class WeightedClassSampler(Sampler):
     def __len__(self):
         return self.num_batches
 
-def get_sampler(sampler_type, labels, batch_size, p=None, k=None, num_classes=None):
+def get_sampler(sampler_type, labels, batch_size, p=None, k=None):
     """
     Factory method để chọn sampler tùy thuộc cấu hình yaml.
     """
@@ -108,11 +78,6 @@ def get_sampler(sampler_type, labels, batch_size, p=None, k=None, num_classes=No
             k = 4
             p = max(1, batch_size // k)
         return PKSampler(labels, p=p, k=k)
-    
-    elif sampler_type == 'random_class':
-        if num_classes is None:
-            num_classes = max(1, batch_size // 8)
-        return RandomClassSampler(labels, num_classes_per_batch=num_classes)
         
     elif sampler_type == 'weighted':
         return WeightedClassSampler(labels, batch_size=batch_size)

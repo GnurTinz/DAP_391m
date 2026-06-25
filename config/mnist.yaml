@@ -36,12 +36,17 @@ loss_schedules:
     start_value: 0.0
     end_value: 0.005
   lambda_con:
-    type: "step"
-    start_epoch: 2
-    value: 0.5
+    type: "cyclic"
+    start_step: 0
+    cycle_length: 50
+    min_value: 0.0
+    max_value: 1.0
   lambda_rec:
-    type: "constant"
-    value: 1.0
+    type: "cyclic"
+    start_step: 0
+    cycle_length: 1000
+    min_value: 0.1
+    max_value: 1.0
   lambda_unc:
     type: "constant"
     value: 0.1
@@ -57,8 +62,9 @@ training:
   log_interval: 10
   save_interval: 1
   use_sampler: true
-  sampler_type: "random_class" # options: pk_sampler, random_class, weighted
-  sampler_num_classes: 4
+  sampler_type: "pk_sampler" # options: pk_sampler, weighted
+  sampler_p: 8
+  sampler_k: 4
 
 logging:
   log_dir: "logs/experiments"
