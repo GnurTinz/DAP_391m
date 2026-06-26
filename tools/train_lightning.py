@@ -42,7 +42,7 @@ def main(cfg: DictConfig):
         save_last=True,
         monitor='val/Total_Loss_epoch',
         mode='min',
-        every_n_epochs=1
+        save_on_train_epoch_end =True
     )
     lr_monitor = LearningRateMonitor(logging_interval='step')
     
