@@ -2,11 +2,5 @@
 contrastive_type: "supcon"
 temperature: 0.1
 
-weights:
-  lambda_id: 1.0
-  lambda_con: 0.5
-  lambda_pair: 1.0
-  lambda_rec: 1.0
-  beta_kl: 0.005
-  lambda_unc: 0.1
+
 

@@ -2,14 +2,7 @@
 contrastive_type: "ms_loss"
 
 ms_alpha: 2.0
-ms_beta: 50.0
-ms_base: 0.5
+ms_beta: 48.0
+ms_base: 0.3
 
-weights:
-  lambda_id: 1.0
-  lambda_con: 0.5
-  lambda_pair: 1.0
-  lambda_rec: 1.0
-  beta_kl: 0.005
-  lambda_unc: 0.1
 
