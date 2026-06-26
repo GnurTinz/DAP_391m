@@ -1,0 +1,15 @@
+# Override config cho Baseline 4: Triệt tiêu tính bất định (Deterministic)
+mode: "single"              
+re_encode: false            
+
+# Tham số Sampling (tạo dữ liệu huấn luyện cho Verifier)
+num_samples: 512            
+pos_strategy: "deterministic"  # Không dùng sigma nội suy, positive sample chính là mu
+pos_temperature: 1.0
+neg_strategy: "random"         # Negative samples vẫn lấy từ Gaussian nhiễu
+neg_temperature: 1.0
+
+# Tham số Huấn luyện (Optimization loop)
+max_steps: 200
+lr: 0.01
+bce_threshold: 0.05

@@ -1,0 +1,15 @@
+# Cấu hình cho quá trình tối ưu Representation (tìm r) tại test-time
+mode: "single"              # 'single' hoặc 'average' (cho U-Net khi muốn kết hợp 2 ảnh)
+re_encode: false            # Nếu true, sẽ decode z -> x_hat rồi encode lại x_hat để lấy mu mới trước khi tìm r
+
+# Tham số Sampling (tạo dữ liệu huấn luyện cho Verifier)
+num_samples: 512            # Số lượng mẫu Positive và Negative sinh ra
+pos_strategy: "stochastic"  # 'deterministic' hoặc 'stochastic'
+pos_temperature: 1.0
+neg_strategy: "random"   # 'random' (Gaussian) hoặc 'spherical' (Xoay trên mặt cầu)
+neg_temperature: 1.0
+
+# Tham số Huấn luyện (Optimization loop)
+max_steps: 200              # Số vòng lặp tối đa nếu chưa chạm ngưỡng
+lr: 0.01                    # Learning rate của Adam
+bce_threshold: 0.5         # Dừng sớm nếu BCE Loss bé hơn ngưỡng này
