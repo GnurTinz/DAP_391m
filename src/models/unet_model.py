@@ -114,12 +114,21 @@ class UNetPalmModel(BaseModel):
             )
             self.skip_dropout = nn.Dropout2d(p=self.skip_dropout_rate)
 
-    def reparameterize(self, mu, logvar, temperature=1.0):
+    def reparameterize(self, mu, logvar, temperature=1.0, mode='stochastic'):
+        if mode == 'deterministic':
+            return mu
+        elif mode == 'symmetric':
+            # Đối xứng qua gốc toạ độ của không gian latent
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            return -mu + eps * std * temperature
+            
+        # Mặc định stochastic
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std * temperature
 
-    def forward(self, x, decode=False, temperature=1.0):
+    def forward(self, x, decode=False, temperature=1.0, sample_mode='stochastic'):
         # 1. Trích xuất Latent distribution từ mạng riêng (Posterior/Prior Network)
         mu, logvar = self.latent_encoder(x)
         
@@ -127,7 +136,7 @@ class UNetPalmModel(BaseModel):
         # và chống nhiễu loạn không gian latent z
         logvar = torch.clamp(logvar, min=-20, max=2.0)
 
-        z = self.reparameterize(mu, logvar, temperature)
+        z = self.reparameterize(mu, logvar, temperature, mode=sample_mode)
         
         out = {
             'mu': mu,

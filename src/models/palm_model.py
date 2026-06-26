@@ -28,21 +28,28 @@ class ProbabilisticPalmModel(BaseModel):
             nn.Linear(latent_dim, proj_dim)
         )
 
-    def reparameterize(self, mu, logvar, temperature=1.0):
+    def reparameterize(self, mu, logvar, temperature=1.0, mode='stochastic'):
         """
-        Reparameterization trick: z = mu + sigma * epsilon * temperature
+        Reparameterization trick
         """
+        if mode == 'deterministic':
+            return mu
+        elif mode == 'symmetric':
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            return -mu + eps * std * temperature
+            
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std * temperature
 
-    def forward(self, x, decode=False, temperature=1.0):
+    def forward(self, x, decode=False, temperature=1.0, sample_mode='stochastic'):
         """
         Forward pass.
         If decode=True, also returns reconstructed image.
         """
         mu, logvar = self.encoder(x)
-        z = self.reparameterize(mu, logvar, temperature)
+        z = self.reparameterize(mu, logvar, temperature, mode=sample_mode)
         
         out = {
             'mu': mu,

@@ -45,8 +45,25 @@ class GenerativeLightningModule(pl.LightningModule):
         img_size = config.get('dataset', {}).get('image_size', [128, 128])
         self.example_input_array = torch.randn(1, 3, img_size[0], img_size[1])
 
-    def forward(self, x, decode=True):
-        return self.model(x, decode=decode)
+    def forward(self, x, decode=True, sampling_strategy='reconstruction'):
+        # Lấy thông số từ YAML config theo strategy
+        sampling_cfg = self.config.get('sampling', {}).get(sampling_strategy, {})
+        mode = sampling_cfg.get('mode', 'stochastic')
+        temperature = sampling_cfg.get('temperature', 1.0)
+
+        # Đổ cấu hình xuống model
+        if 'sample_mode' in self.model.forward.__code__.co_varnames:
+            out = self.model(x, decode=decode, temperature=temperature, sample_mode=mode)
+        elif 'temperature' in self.model.forward.__code__.co_varnames:
+            out = self.model(x, decode=decode, temperature=temperature)
+        else:
+            out = self.model(x, decode=decode)
+        import torch
+        if torch.jit.is_tracing():
+            # Khi TensorBoard Tracer quét qua, ta ép trả về một tuple thuần tuý để tránh lỗi Dict
+            # Trả về mu, logvar, proj, x_hat
+            return out.get('mu'), out.get('logvar'), out.get('proj'), out.get('x_hat')
+        return out
 
     def _update_loss_weights(self):
         epoch = self.current_epoch
@@ -65,7 +82,8 @@ class GenerativeLightningModule(pl.LightningModule):
 
     def shared_step(self, batch, batch_idx, stage='train'):
         images, labels = batch
-        outputs = self(images, decode=True)
+        # Quá trình train bắt buộc dùng strategy='training' để chuẩn phân phối (stochastic, T=1.0)
+        outputs = self(images, decode=True, sampling_strategy='training')
         
         mu = outputs['mu']
         logvar = outputs['logvar']

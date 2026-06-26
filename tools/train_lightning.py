@@ -51,7 +51,7 @@ def main(cfg: DictConfig):
         logger = TensorBoardLogger(
             save_dir=cfg.logging.log_dir,
             name=cfg.logging.experiment_name,
-            log_graph=False  # Đặt thành False vì mô hình trả về Dict, JIT trace không hỗ trợ mặc định
+            log_graph=True
         )
 
     # Initialize Trainer

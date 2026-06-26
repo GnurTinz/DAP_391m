@@ -1,0 +1,36 @@
+# Cấu hình các cơ chế Sample ra Z từ (mu, logvar)
+
+# 0. Chế độ dùng trong quá trình huấn luyện VAE (Bắt buộc stochastic, T=1.0 để flow gradient)
+training:
+  mode: "stochastic"
+  temperature: 1.0
+
+# 1. Chế độ dùng để trích xuất đặc trưng (Finding Representation / Verification)
+# Yêu cầu: Ổn định, không có nhiễu, giống hệt đầu vào. z = mu
+representation:
+  mode: "deterministic" 
+  temperature: 0.0
+
+# 2. Chế độ dùng để sinh ảnh tái tạo (Reconstruction)
+# Yêu cầu: Giữ được cấu trúc nhưng cho phép một chút nhiễu nhỏ của phân phối latent
+reconstruction:
+  mode: "stochastic"
+  temperature: 0.1
+
+# 3. Chế độ dùng để sinh ảnh biến thể (Generate Variations)
+# Yêu cầu: Tạo ra các mẫu khác biệt rõ ràng với đầu vào (đa dạng hóa)
+variation:
+  mode: "stochastic"
+  temperature: 1.0
+
+# 4. Chế độ khám phá (Exploration - High Diversity)
+# Yêu cầu: Ép phương sai lớn để ra những mẫu cực kì khác
+exploration:
+  mode: "stochastic"
+  temperature: 1.5
+
+# 5. Chế độ đối xứng (Symmetric)
+# Yêu cầu: Sinh ra đối xứng qua gốc toạ độ của mu (z = -mu) 
+symmetric:
+  mode: "symmetric"
+  temperature: 0.0

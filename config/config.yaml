@@ -3,6 +3,7 @@ defaults:
   - model: unet
   - training: default
   - losses: default
+  - sampling: default
   - _self_
 
 hydra:

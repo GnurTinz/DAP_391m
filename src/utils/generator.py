@@ -84,9 +84,9 @@ class ImageGenerator:
         x_expanded = x_single.expand(num_variations, -1, -1, -1).clone()
         
         with torch.no_grad():
-            # Truyền temperature để tăng cường sự khác biệt giữa các biến thể (nếu model hỗ trợ)
-            if 'temperature' in self.model.forward.__code__.co_varnames:
-                out = self.model(x_expanded, decode=True, temperature=temperature)
+            # Truyền temperature và sample_mode
+            if 'sample_mode' in self.model.forward.__code__.co_varnames:
+                out = self.model(x_expanded, decode=True, temperature=temperature, sample_mode='stochastic')
             else:
                 out = self.model(x_expanded, decode=True)
                 
