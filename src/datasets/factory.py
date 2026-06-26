@@ -3,6 +3,8 @@ from .base import BaseDataset
 from .palm_dataset import PalmPrintDataset
 from .mnist_dataset import MNISTDataset
 from .own_dataset import OwnDataset
+from .tongji_dataset import TongjiDataset
+from .iitd_dataset import IITDDataset
 
 class DatasetFactory:
     """
@@ -12,7 +14,9 @@ class DatasetFactory:
     _datasets = {
         'PalmPrintDataset': PalmPrintDataset,
         'MNISTDataset': MNISTDataset,
-        'OwnDataset': OwnDataset
+        'OwnDataset': OwnDataset,
+        'tongji': TongjiDataset,
+        'iitd': IITDDataset
     }
     
     @classmethod

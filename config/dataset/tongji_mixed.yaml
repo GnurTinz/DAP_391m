@@ -1,7 +1,13 @@
-name: "PalmPrintDataset"
-data_dir: "data/PolyU"
+name: "tongji"
+data_dir: "data/Tongji"
 image_size: [128, 128]
-open_set_ratio: 0.0
+channels: 3
+num_classes: 600
+
+# Chế độ mixed: Gộp session1 và session2 lại rùi chia tỷ lệ 80/20
+split_mode: "mixed"
+train_ratio: 0.8
+seed: 42
 
 
 transforms:

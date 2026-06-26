@@ -1,7 +1,13 @@
-name: "PalmPrintDataset"
-data_dir: "data/PolyU"
+name: "tongji"
+data_dir: "data/Tongji"
 image_size: [128, 128]
-open_set_ratio: 0.0
+channels: 3
+num_classes: 600
+
+# Chế độ session: session1 làm tập Train, session2 làm tập Val
+split_mode: "session"
+train_ratio: 0.8
+seed: 42
 
 
 transforms:

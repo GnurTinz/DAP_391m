@@ -1,12 +1,5 @@
-# Chọn hàm loss: 'supcon', 'ms_loss', hoặc 'infonce'
-contrastive_type: "ms_loss"
-
-# Cấu hình cho MS Loss
-ms_alpha: 2.0
-ms_beta: 50.0
-ms_base: 0.5
-
-# Cấu hình cho SupCon / InfoNCE
+# Cấu hình sử dụng InfoNCE Loss (Phiên bản cơ bản của Contrastive Learning)
+contrastive_type: "infonce"
 temperature: 0.1
 
 weights:

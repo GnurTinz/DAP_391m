@@ -1,9 +1,13 @@
-name: "OwnDataset"
-data_dir: "data/scripts/script1/"
+name: "iitd"
+data_dir: "data/IITD Palmprint V1/Segmented"
 image_size: [128, 128]
+channels: 3
+num_classes: 230 # Giả định IITD có 230 người
+
+# Chế độ hand: Left làm tập Train, Right làm tập Val
 split_mode: "hand"
-train_hand: "left"
-val_hand: "right"
+train_ratio: 0.8
+seed: 42
 
 
 transforms:

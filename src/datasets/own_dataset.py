@@ -14,26 +14,6 @@ class OwnDataset(BaseDataset):
     
     def __init__(self, data_dir: str, config: Dict[str, Any], is_train: bool = True):
         super().__init__(data_dir, config, is_train)
-        
-        # Define default transforms
-        img_size = tuple(self.config.get('image_size', (128, 128)))
-        if self.is_train:
-            self.transform = transforms.Compose([
-                transforms.Resize(img_size),
-                # Các phép biến đổi cơ bản
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(15),
-                transforms.ColorJitter(brightness=0.1, contrast=0.1),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-            ])
-        else:
-            self.transform = transforms.Compose([
-                transforms.Resize(img_size),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-            ])
-
     def _load_data(self) -> None:
         """
         Load dataset from directory structure.
@@ -73,14 +53,12 @@ class OwnDataset(BaseDataset):
 
         img_path, label = self.samples[idx]
         try:
-            image = Image.open(img_path).convert('RGB')
-            if self.transform:
-                image = self.transform(image)
+            image = self._load_image(img_path)
             return image, label
         except Exception as e:
             print(f"Error loading image {img_path}: {e}")
             img_size = self.config.get('image_size', [128, 128])
-            return torch.randn(3, img_size[0], img_size[1]), label
+            return torch.randn(self.channels, img_size[0], img_size[1]), label
 
     def get_labels(self):
         if not self.samples:

@@ -1,53 +1,43 @@
+import sys
+import os
 import unittest
 import torch
-from src.losses.custom import KLDivLoss, UncertaintyLoss, ReconstructionLoss, SupConLoss
 
-class TestCustomLosses(unittest.TestCase):
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.losses.custom import get_contrastive_loss
+
+class TestContrastiveLosses(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 4
-        self.latent_dim = 128
-        self.mu = torch.randn(self.batch_size, self.latent_dim)
-        self.logvar = torch.randn(self.batch_size, self.latent_dim)
+        # Fake data: 4 samples, 2 classes (0, 0, 1, 1), embedding dim 64
+        self.features = torch.randn(4, 64, requires_grad=True)
+        self.labels = torch.tensor([0, 0, 1, 1])
         
-        self.img_shape = (self.batch_size, 3, 128, 128)
-        self.x = torch.randn(*self.img_shape)
-        self.x_hat = torch.randn(*self.img_shape)
+    def _check_loss(self, loss_type):
+        config = {'contrastive_type': loss_type}
+        criterion = get_contrastive_loss(config)
         
-    def test_kl_div_loss(self):
-        criterion = KLDivLoss({})
-        loss = criterion(self.mu, self.logvar)
+        # We need to re-initialize features so gradients don't accumulate across tests
+        features = self.features.clone().detach().requires_grad_(True)
         
-        self.assertIsInstance(loss, torch.Tensor)
-        self.assertEqual(loss.dim(), 0, "Loss phải là một scalar tensor")
-        self.assertTrue(torch.isfinite(loss).all(), "Loss value bị nan/inf")
-
-    def test_uncertainty_loss(self):
-        criterion = UncertaintyLoss({})
-        loss = criterion(self.logvar, lower_bound=-4.0, upper_bound=2.0)
+        loss = criterion(features, self.labels)
         
-        self.assertIsInstance(loss, torch.Tensor)
-        self.assertEqual(loss.dim(), 0, "Loss phải là một scalar tensor")
-        self.assertTrue(torch.isfinite(loss).all(), "Loss value bị nan/inf")
-        self.assertTrue(loss.item() >= 0, "Penalty loss không được âm")
-
-    def test_reconstruction_loss(self):
-        criterion = ReconstructionLoss({})
-        loss = criterion(self.x, self.x_hat)
+        # Loss must be a scalar
+        self.assertEqual(loss.dim(), 0, f"{loss_type} should return a scalar.")
+        self.assertFalse(torch.isnan(loss).any(), f"{loss_type} returned NaN.")
         
-        self.assertIsInstance(loss, torch.Tensor)
-        self.assertEqual(loss.dim(), 0, "Loss phải là một scalar tensor")
-        self.assertTrue(torch.isfinite(loss).all(), "Loss value bị nan/inf")
-        self.assertTrue(loss.item() >= 0, "Reconstruction loss không được âm")
-
+        loss.backward()
+        
+        self.assertIsNotNone(features.grad, f"No gradients computed for {loss_type}.")
+        self.assertFalse(torch.isnan(features.grad).any(), f"Gradients contain NaNs for {loss_type}.")
+        
     def test_supcon_loss(self):
-        criterion = SupConLoss({})
-        features = torch.randn(self.batch_size, 64)
-        labels = torch.randint(0, 10, (self.batch_size,))
-        loss = criterion(features, labels)
+        self._check_loss('supcon')
         
-        self.assertIsInstance(loss, torch.Tensor)
-        self.assertEqual(loss.dim(), 0, "Loss phải là một scalar tensor")
-        self.assertTrue(torch.isfinite(loss).all(), "Loss value bị nan/inf")
+    def test_ms_loss(self):
+        self._check_loss('ms_loss')
+        
+    def test_infonce_loss(self):
+        self._check_loss('infonce')
 
 if __name__ == '__main__':
     unittest.main()

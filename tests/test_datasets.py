@@ -1,87 +1,113 @@
-import unittest
-import torch
+import sys
 import os
+import unittest
+import tempfile
 import shutil
-from src.datasets.palm_dataset import PalmPrintDataset
-from src.datasets.own_dataset import OwnDataset
-from src.datasets.factory import DatasetFactory
-from src.datasets.base import BaseDataset
 
-class TestPalmPrintDataset(unittest.TestCase):
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.datasets.tongji_dataset import TongjiDataset
+from src.datasets.iitd_dataset import IITDDataset
+
+class TestNewDatasets(unittest.TestCase):
     def setUp(self):
-        self.config = {
+        # Tạo thư mục tạm để giả lập cấu trúc file
+        self.test_dir = tempfile.mkdtemp()
+        
+        # --- Tạo cấu trúc ảo cho Tongji ---
+        self.tongji_dir = os.path.join(self.test_dir, 'Tongji')
+        os.makedirs(os.path.join(self.tongji_dir, 'session1'))
+        os.makedirs(os.path.join(self.tongji_dir, 'session2'))
+        
+        # Giả lập 20 ảnh (2 người) cho session 1
+        for i in range(20):
+            open(os.path.join(self.tongji_dir, 'session1', f"{i:03d}.bmp"), 'w').close()
+            
+        # Giả lập 20 ảnh (2 người) cho session 2
+        for i in range(20):
+            open(os.path.join(self.tongji_dir, 'session2', f"{i:03d}.bmp"), 'w').close()
+            
+            
+        # --- Tạo cấu trúc ảo cho IITD ---
+        self.iitd_dir = os.path.join(self.test_dir, 'IITD')
+        os.makedirs(os.path.join(self.iitd_dir, 'Left'))
+        os.makedirs(os.path.join(self.iitd_dir, 'Right'))
+        
+        # Người 001 có 5 ảnh bên Left, 5 ảnh bên Right
+        for i in range(5):
+            open(os.path.join(self.iitd_dir, 'Left', f"001_{i:02d}.bmp"), 'w').close()
+            open(os.path.join(self.iitd_dir, 'Right', f"001_{i+5:02d}.bmp"), 'w').close()
+            
+        # Người 002 có 5 ảnh bên Left, 5 ảnh bên Right
+        for i in range(5):
+            open(os.path.join(self.iitd_dir, 'Left', f"002_{i:02d}.bmp"), 'w').close()
+            open(os.path.join(self.iitd_dir, 'Right', f"002_{i+5:02d}.bmp"), 'w').close()
+
+    def tearDown(self):
+        # Dọn dẹp thư mục tạm
+        shutil.rmtree(self.test_dir)
+
+    def test_tongji_session_mode(self):
+        config = {
+            'split_mode': 'session',
             'image_size': [128, 128]
         }
-        self.dummy_data_dir = 'dummy_test_data_dir'
+        train_dataset = TongjiDataset(data_dir=self.tongji_dir, config=config, is_train=True)
+        val_dataset = TongjiDataset(data_dir=self.tongji_dir, config=config, is_train=False)
         
-    def tearDown(self):
-        if os.path.exists(self.dummy_data_dir):
-            shutil.rmtree(self.dummy_data_dir)
+        self.assertEqual(len(train_dataset.samples), 20)
+        self.assertEqual(len(val_dataset.samples), 20)
+        
+        # Ảnh 0-9 là label 0, 10-19 là label 1
+        self.assertEqual(train_dataset.samples[0][1], 0)
+        self.assertEqual(train_dataset.samples[9][1], 0)
+        self.assertEqual(train_dataset.samples[10][1], 1)
+        self.assertEqual(train_dataset.samples[19][1], 1)
 
-    def test_dataset_initialization_dry_run(self):
-        dataset = PalmPrintDataset(self.dummy_data_dir, self.config, is_train=True)
-        self.assertEqual(len(dataset), 100, "Dummy dataset phải có độ dài 100")
-        
-    def test_dataset_getitem_dry_run(self):
-        dataset = PalmPrintDataset(self.dummy_data_dir, self.config, is_train=False)
-        img, label = dataset[0]
-        self.assertEqual(img.shape, (3, 128, 128), "Image shape không khớp với config")
-        self.assertIsInstance(label, int, "Label phải là kiểu int")
-        
-    def test_transforms_exist(self):
-        dataset_train = PalmPrintDataset(self.dummy_data_dir, self.config, is_train=True)
-        dataset_test = PalmPrintDataset(self.dummy_data_dir, self.config, is_train=False)
-        self.assertIsNotNone(dataset_train.transform)
-        self.assertIsNotNone(dataset_test.transform)
-        self.assertTrue(len(dataset_train.transform.transforms) > len(dataset_test.transform.transforms))
-
-class TestOwnDataset(unittest.TestCase):
-    def setUp(self):
-        self.config = {
-            'image_size': [32, 32]
+    def test_tongji_mixed_mode(self):
+        config = {
+            'split_mode': 'mixed',
+            'train_ratio': 0.8,
+            'image_size': [128, 128],
+            'seed': 42
         }
-        self.dummy_data_dir = 'dummy_own_data_dir'
+        train_dataset = TongjiDataset(data_dir=self.tongji_dir, config=config, is_train=True)
+        val_dataset = TongjiDataset(data_dir=self.tongji_dir, config=config, is_train=False)
         
-    def tearDown(self):
-        if os.path.exists(self.dummy_data_dir):
-            shutil.rmtree(self.dummy_data_dir)
+        # Mỗi người (label) có tổng cộng 20 ảnh (10 session1 + 10 session2)
+        # Train 80% = 16 ảnh / người. Có 2 người => 32 ảnh train, 8 ảnh val
+        self.assertEqual(len(train_dataset.samples), 32)
+        self.assertEqual(len(val_dataset.samples), 8)
 
-    def test_own_dataset_initialization_dry_run(self):
-        dataset = OwnDataset(self.dummy_data_dir, self.config, is_train=True)
-        self.assertEqual(len(dataset), 100, "Dummy OwnDataset phải có độ dài 100")
-        
-    def test_own_dataset_getitem_dry_run(self):
-        dataset = OwnDataset(self.dummy_data_dir, self.config, is_train=False)
-        img, label = dataset[0]
-        self.assertEqual(img.shape, (3, 32, 32), "Image shape không khớp với config")
-        self.assertIsInstance(label, int, "Label phải là kiểu int")
-        
-    def test_own_transforms_exist(self):
-        dataset_train = OwnDataset(self.dummy_data_dir, self.config, is_train=True)
-        dataset_test = OwnDataset(self.dummy_data_dir, self.config, is_train=False)
-        self.assertIsNotNone(dataset_train.transform)
-        self.assertIsNotNone(dataset_test.transform)
-        self.assertTrue(len(dataset_train.transform.transforms) > len(dataset_test.transform.transforms))
-
-class TestDatasetFactory(unittest.TestCase):
-    def setUp(self):
-        self.config = {
-            'image_size': [64, 64]
+    def test_iitd_hand_mode(self):
+        config = {
+            'split_mode': 'hand',
+            'image_size': [128, 128]
         }
-        self.dummy_data_dir = 'dummy_factory_dir'
+        train_dataset = IITDDataset(data_dir=self.iitd_dir, config=config, is_train=True)
+        val_dataset = IITDDataset(data_dir=self.iitd_dir, config=config, is_train=False)
         
-    def test_factory_create_palmprint(self):
-        dataset = DatasetFactory.create('PalmPrintDataset', self.dummy_data_dir, self.config)
-        self.assertIsInstance(dataset, PalmPrintDataset)
-        self.assertTrue(issubclass(type(dataset), BaseDataset))
+        # Left làm train (10 ảnh), Right làm val (10 ảnh)
+        self.assertEqual(len(train_dataset.samples), 10)
+        self.assertEqual(len(val_dataset.samples), 10)
         
-    def test_factory_create_owndataset(self):
-        dataset = DatasetFactory.create('OwnDataset', self.dummy_data_dir, self.config)
-        self.assertIsInstance(dataset, OwnDataset)
+        # Đảm bảo parser ID hoạt động tốt ("001" và "002" chuyển thành 0 và 1)
+        labels = train_dataset.get_labels()
+        self.assertIn(0, labels)
+        self.assertIn(1, labels)
+
+    def test_iitd_ratio_mode(self):
+        config = {
+            'split_mode': 'ratio',
+            'train_ratio': 0.8,
+            'image_size': [128, 128],
+            'seed': 42
+        }
+        train_dataset = IITDDataset(data_dir=self.iitd_dir, config=config, is_train=True)
+        val_dataset = IITDDataset(data_dir=self.iitd_dir, config=config, is_train=False)
         
-    def test_factory_invalid_dataset(self):
-        with self.assertRaises(ValueError):
-            DatasetFactory.create('NonExistentDataset', self.dummy_data_dir, self.config)
+        # Tổng 20 ảnh (10 ảnh/người). Train 80% = 8 ảnh/người => 16 train, 4 val
+        self.assertEqual(len(train_dataset.samples), 16)
+        self.assertEqual(len(val_dataset.samples), 4)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,21 @@
+name: "iitd"
+data_dir: "data/IITD Palmprint V1/Segmented"
+image_size: [128, 128]
+channels: 3
+num_classes: 230 # Giả định IITD có 230 người
+
+# Chế độ ratio: Gộp Left và Right lại rùi chia tỷ lệ 80/20
+split_mode: "ratio"
+train_ratio: 0.8
+seed: 42
+
+
+transforms:
+  random_horizontal_flip: 0.5
+  random_rotation: 15
+  color_jitter:
+    brightness: 0.1
+    contrast: 0.1
+  random_affine:
+    degrees: 0
+    translate: [0.1, 0.1]

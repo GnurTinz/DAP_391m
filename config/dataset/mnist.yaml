@@ -2,3 +2,14 @@ name: "MNISTDataset"
 data_dir: "data/MNIST"
 image_size: [32, 32]
 open_set_ratio: 0.0
+
+
+transforms:
+  random_horizontal_flip: 0.5
+  random_rotation: 15
+  color_jitter:
+    brightness: 0.1
+    contrast: 0.1
+  random_affine:
+    degrees: 0
+    translate: [0.1, 0.1]

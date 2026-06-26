@@ -85,3 +85,90 @@ class SupConLoss(BaseLoss):
         # 8. Contrastive loss = -mean_log_prob_pos.mean()
         loss = -mean_log_prob_pos.mean()
         return loss
+
+class MultiSimilarityLoss(BaseLoss):
+    """
+    Multi-Similarity Loss with Self-Miner.
+    Push and pull based on absolute similarity pairs with strong weighting.
+    """
+    def __init__(self, config: dict):
+        super().__init__(config)
+        self.alpha = config.get('ms_alpha', 2.0)
+        self.beta = config.get('ms_beta', 50.0)
+        self.base = config.get('ms_base', 0.5)
+
+    def forward(self, features, labels):
+        device = features.device
+        batch_size = features.shape[0]
+        
+        # L2 normalize
+        features = F.normalize(features, p=2, dim=1)
+        sim_matrix = torch.matmul(features, features.T)
+        
+        labels = labels.contiguous().view(-1, 1)
+        mask_pos = torch.eq(labels, labels.T).float().to(device)
+        mask_neg = 1.0 - mask_pos
+        
+        # Loại bỏ đường chéo
+        logits_mask = torch.ones_like(mask_pos) - torch.eye(batch_size, device=device)
+        mask_pos = mask_pos * logits_mask
+        
+        loss = []
+        for i in range(batch_size):
+            pos_sims = sim_matrix[i][mask_pos[i].bool()]
+            neg_sims = sim_matrix[i][mask_neg[i].bool()]
+            
+            if len(pos_sims) == 0 or len(neg_sims) == 0:
+                continue
+                
+            # Hard mining using MS Loss weighting
+            pos_loss = (1.0 / self.alpha) * torch.log(1 + torch.sum(torch.exp(-self.alpha * (pos_sims - self.base))))
+            neg_loss = (1.0 / self.beta) * torch.log(1 + torch.sum(torch.exp(self.beta * (neg_sims - self.base))))
+            
+            loss.append(pos_loss + neg_loss)
+            
+        if len(loss) == 0:
+            return torch.tensor(0.0, requires_grad=True, device=device)
+            
+        return torch.stack(loss).mean()
+
+class InfoNCELoss(BaseLoss):
+    """
+    InfoNCE Loss (Tương đương NT-Xent loss).
+    """
+    def __init__(self, config: dict):
+        super().__init__(config)
+        self.temperature = config.get('temperature', 0.1)
+
+    def forward(self, features, labels):
+        device = features.device
+        batch_size = features.shape[0]
+        
+        features = F.normalize(features, p=2, dim=1)
+        sim_matrix = torch.matmul(features, features.T) / self.temperature
+        
+        labels = labels.contiguous().view(-1, 1)
+        mask = torch.eq(labels, labels.T).float().to(device)
+        logits_mask = torch.ones_like(mask) - torch.eye(batch_size, device=device)
+        mask = mask * logits_mask
+        
+        exp_sim = torch.exp(sim_matrix) * logits_mask
+        log_prob = sim_matrix - torch.log(exp_sim.sum(1, keepdim=True) + 1e-9)
+        
+        mean_log_prob_pos = (mask * log_prob).sum(1) / (mask.sum(1) + 1e-9)
+        loss = -mean_log_prob_pos[mask.sum(1) > 0].mean()
+        
+        if torch.isnan(loss) or mask.sum() == 0:
+            return torch.tensor(0.0, requires_grad=True, device=device)
+            
+        return loss
+
+def get_contrastive_loss(config: dict):
+    loss_type = config.get('contrastive_type', 'supcon')
+    if loss_type == 'ms_loss':
+        return MultiSimilarityLoss(config)
+    elif loss_type == 'infonce':
+        return InfoNCELoss(config)
+    else:
+        return SupConLoss(config)
+

@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 
 from src.models.palm_model import ProbabilisticPalmModel
 from src.models.unet_model import UNetPalmModel
-from src.losses.custom import KLDivLoss, ReconstructionLoss, UncertaintyLoss, SupConLoss
+from src.losses.custom import KLDivLoss, ReconstructionLoss, UncertaintyLoss, get_contrastive_loss
 from src.engine.loss_scheduler import LossSchedulerManager
 
 class GenerativeLightningModule(pl.LightningModule):
@@ -30,8 +30,9 @@ class GenerativeLightningModule(pl.LightningModule):
         self.kl_loss = KLDivLoss(loss_cfg)
         self.rec_loss = ReconstructionLoss(loss_cfg)
         self.unc_loss = UncertaintyLoss(loss_cfg)
-        self.supcon_loss = SupConLoss(loss_cfg)
         
+        self.contrastive_loss = get_contrastive_loss(loss_cfg)
+        print(f"🚀 Sử dụng hàm mất mát đẩy/kéo (Metric Learning): {self.contrastive_loss.__class__.__name__} 🚀")
         # 3. Khởi tạo Schedulers & Default Weights
         self.loss_scheduler = LossSchedulerManager(config.get('loss_schedules', {}))
         
@@ -80,7 +81,7 @@ class GenerativeLightningModule(pl.LightningModule):
             
         con = torch.tensor(0.0, device=self.device)
         if 'proj' in outputs:
-            con = self.supcon_loss(outputs['proj'], labels)
+            con = self.contrastive_loss(outputs['proj'], labels)
             total_loss += self.lambda_con * con
             
         # Logging
