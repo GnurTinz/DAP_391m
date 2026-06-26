@@ -228,33 +228,10 @@ class ImageGenerator:
             if hasattr(self.model, 'use_decoder') and not self.model.use_decoder:
                 raise ValueError("Mô hình không có decoder.")
                 
-            if hasattr(self.model, 'inc'): # Nếu là U-Net, phải truyền lại skip-connections
+            if hasattr(self.model, 'decode_from_z_and_x'): # Nếu là U-Net
                 # Nhân bản skip connections
                 x_expanded = x_single.expand(num_images, -1, -1, -1).clone()
-                x1 = self.model.inc(x_expanded)
-                x2 = self.model.down1(x1)
-                x3 = self.model.down2(x2)
-                
-                z_dec = self.model.fc_dec(z_batch)
-                z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
-                
-                # FiLM modulation
-                gamma3 = self.model.film_gamma3(z_batch).view(-1, 256, 1, 1)
-                beta3 = self.model.film_beta3(z_batch).view(-1, 256, 1, 1)
-                modulated_x3 = (1 + gamma3) * x3 + beta3
-                
-                gamma2 = self.model.film_gamma2(z_batch).view(-1, 128, 1, 1)
-                beta2 = self.model.film_beta2(z_batch).view(-1, 128, 1, 1)
-                modulated_x2 = (1 + gamma2) * x2 + beta2
-                
-                u1 = self.model.up1(z_dec, modulated_x3)
-                u2 = self.model.up2(u1, modulated_x2)
-                u3 = self.model.up3(u2, x1)
-                x_hat = self.model.outc(u3)
-                
-                import torch.nn.functional as F
-                if list(x_hat.shape[-2:]) != list(self.model.image_size):
-                    x_hat = F.interpolate(x_hat, size=tuple(self.model.image_size), mode='bilinear', align_corners=False)
+                x_hat = self.model.decode_from_z_and_x(z_batch, x_expanded)
             else: # Nếu là VAE thường
                 x_hat = self.model.decoder(z_batch)
                 
@@ -314,33 +291,10 @@ class ImageGenerator:
             if hasattr(self.model, 'use_decoder') and not self.model.use_decoder:
                 raise ValueError("Mô hình không có decoder.")
                 
-            if hasattr(self.model, 'inc'): # Nếu là U-Net
+            if hasattr(self.model, 'decode_from_z_and_x'): # Nếu là U-Net
                 x_avg = (x1 + x2) / 2.0
                 x_expanded = x_avg.expand(num_images, -1, -1, -1).clone()
-                x1_skip = self.model.inc(x_expanded)
-                x2_skip = self.model.down1(x1_skip)
-                x3_skip = self.model.down2(x2_skip)
-                
-                z_dec = self.model.fc_dec(z_batch)
-                z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
-                
-                # FiLM modulation
-                gamma3 = self.model.film_gamma3(z_batch).view(-1, 256, 1, 1)
-                beta3 = self.model.film_beta3(z_batch).view(-1, 256, 1, 1)
-                modulated_x3 = (1 + gamma3) * x3_skip + beta3
-                
-                gamma2 = self.model.film_gamma2(z_batch).view(-1, 128, 1, 1)
-                beta2 = self.model.film_beta2(z_batch).view(-1, 128, 1, 1)
-                modulated_x2 = (1 + gamma2) * x2_skip + beta2
-                
-                u1 = self.model.up1(z_dec, modulated_x3)
-                u2 = self.model.up2(u1, modulated_x2)
-                u3 = self.model.up3(u2, x1_skip)
-                x_hat = self.model.outc(u3)
-                
-                import torch.nn.functional as F
-                if list(x_hat.shape[-2:]) != list(self.model.image_size):
-                    x_hat = F.interpolate(x_hat, size=tuple(self.model.image_size), mode='bilinear', align_corners=False)
+                x_hat = self.model.decode_from_z_and_x(z_batch, x_expanded)
             else: # Nếu là VAE thường
                 x_hat = self.model.decoder(z_batch)
                 
@@ -408,31 +362,8 @@ class ImageGenerator:
             if hasattr(self.model, 'use_decoder') and not self.model.use_decoder:
                 raise ValueError("Mô hình không có decoder.")
                 
-            if hasattr(self.model, 'inc'): # Nếu là U-Net
-                x1_skip = self.model.inc(x_skip_batch)
-                x2_skip = self.model.down1(x1_skip)
-                x3_skip = self.model.down2(x2_skip)
-                
-                z_dec = self.model.fc_dec(z_batch)
-                z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
-                
-                # FiLM modulation
-                gamma3 = self.model.film_gamma3(z_batch).view(-1, 256, 1, 1)
-                beta3 = self.model.film_beta3(z_batch).view(-1, 256, 1, 1)
-                modulated_x3 = (1 + gamma3) * x3_skip + beta3
-                
-                gamma2 = self.model.film_gamma2(z_batch).view(-1, 128, 1, 1)
-                beta2 = self.model.film_beta2(z_batch).view(-1, 128, 1, 1)
-                modulated_x2 = (1 + gamma2) * x2_skip + beta2
-                
-                u1 = self.model.up1(z_dec, modulated_x3)
-                u2 = self.model.up2(u1, modulated_x2)
-                u3 = self.model.up3(u2, x1_skip)
-                x_hat = self.model.outc(u3)
-                
-                import torch.nn.functional as F
-                if list(x_hat.shape[-2:]) != list(self.model.image_size):
-                    x_hat = F.interpolate(x_hat, size=tuple(self.model.image_size), mode='bilinear', align_corners=False)
+            if hasattr(self.model, 'decode_from_z_and_x'): # Nếu là U-Net
+                x_hat = self.model.decode_from_z_and_x(z_batch, x_skip_batch)
             else: # Nếu là VAE thường
                 x_hat = self.model.decoder(z_batch)
                 

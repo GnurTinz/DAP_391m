@@ -146,41 +146,48 @@ class UNetPalmModel(BaseModel):
         }
         
         if decode and self.use_decoder:
-            # 2. Trích xuất Spatial Features từ Deterministic U-Net Encoder
-            x1 = self.inc(x)       # Skip 1 (64 channels)
-            x2 = self.down1(x1)    # Skip 2 (128 channels)
-            x3 = self.down2(x2)    # Skip 3 (256 channels)
-            # x4 = self.down3(x3)  # Bỏ qua vì không còn dùng làm bottleneck
-            
-            # Giải mã từ latent z
-            z_dec = self.fc_dec(z)
-            z_dec = z_dec.view(-1, 512, self.bottleneck_size, self.bottleneck_size)
-            
-            # 3. Kết hợp z vào U-Net thông qua FiLM để điều khiển skip connections
-            gamma3 = self.film_gamma3(z).view(-1, 256, 1, 1)
-            beta3 = self.film_beta3(z).view(-1, 256, 1, 1)
-            modulated_x3 = (1 + gamma3) * x3 + beta3
-            
-            gamma2 = self.film_gamma2(z).view(-1, 128, 1, 1)
-            beta2 = self.film_beta2(z).view(-1, 128, 1, 1)
-            modulated_x2 = (1 + gamma2) * x2 + beta2
-            
-            # Áp dụng Dropout2d cho toàn bộ các skip connection thay vì chỉ x1
-            # Ép mạng Decoder bị 'đói' thông tin không gian, bắt buộc phải dùng z_dec
-            d_x3 = self.skip_dropout(modulated_x3)
-            d_x2 = self.skip_dropout(modulated_x2)
-            d_x1 = self.skip_dropout(x1)
-            
-            u1 = self.up1(z_dec, d_x3)
-            u2 = self.up2(u1, d_x2)
-            u3 = self.up3(u2, d_x1)
-            
-            x_hat = self.outc(u3)
-            
-            # Đảm bảo output size đúng bằng input size
-            if list(x_hat.shape[-2:]) != list(self.image_size):
-                x_hat = F.interpolate(x_hat, size=tuple(self.image_size), mode='bilinear', align_corners=False)
-                
-            out['x_hat'] = x_hat
+            out['x_hat'] = self.decode_from_z_and_x(z, x)
             
         return out
+
+    def decode_from_z_and_x(self, z, x):
+        """
+        Giải mã ra ảnh x_hat từ vector tiềm ẩn z, sử dụng skip connections trích xuất từ ảnh x.
+        """
+        if not self.use_decoder:
+            raise ValueError("Mô hình không sử dụng decoder.")
+            
+        # 1. Trích xuất Spatial Features từ Deterministic U-Net Encoder
+        x1 = self.inc(x)       # Skip 1 (64 channels)
+        x2 = self.down1(x1)    # Skip 2 (128 channels)
+        x3 = self.down2(x2)    # Skip 3 (256 channels)
+        
+        # 2. Giải mã từ latent z
+        z_dec = self.fc_dec(z)
+        z_dec = z_dec.view(-1, 512, self.bottleneck_size, self.bottleneck_size)
+        
+        # 3. Kết hợp z vào U-Net thông qua FiLM để điều khiển skip connections
+        gamma3 = self.film_gamma3(z).view(-1, 256, 1, 1)
+        beta3 = self.film_beta3(z).view(-1, 256, 1, 1)
+        modulated_x3 = (1 + gamma3) * x3 + beta3
+        
+        gamma2 = self.film_gamma2(z).view(-1, 128, 1, 1)
+        beta2 = self.film_beta2(z).view(-1, 128, 1, 1)
+        modulated_x2 = (1 + gamma2) * x2 + beta2
+        
+        # Áp dụng Dropout2d cho toàn bộ các skip connection
+        d_x3 = self.skip_dropout(modulated_x3)
+        d_x2 = self.skip_dropout(modulated_x2)
+        d_x1 = self.skip_dropout(x1)
+        
+        u1 = self.up1(z_dec, d_x3)
+        u2 = self.up2(u1, d_x2)
+        u3 = self.up3(u2, d_x1)
+        
+        x_hat = self.outc(u3)
+        
+        # Đảm bảo output size đúng bằng input size
+        if list(x_hat.shape[-2:]) != list(self.image_size):
+            x_hat = F.interpolate(x_hat, size=tuple(self.image_size), mode='bilinear', align_corners=False)
+            
+        return x_hat

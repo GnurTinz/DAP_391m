@@ -4,6 +4,8 @@ image_size: [128, 128]
 
 # 'both', 'left', hoặc 'right' - dùng để lọc thư mục con nếu dataset có chia tay trái/phải
 hand_filter: "both"
+split_mode: "ratio"
+train_ratio: 0.9
 
 # Nếu bạn muốn cấu hình thêm các tham số data augmentation khác thì thêm ở đây
 transform:
