@@ -40,7 +40,7 @@ def main(cfg: DictConfig):
         filename='best',
         save_top_k=1,
         save_last=True,
-        monitor='val/loss',
+        monitor='val/Total_Loss',
         mode='min'
     )
     lr_monitor = LearningRateMonitor(logging_interval='step')
