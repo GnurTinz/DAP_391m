@@ -34,3 +34,15 @@ exploration:
 symmetric:
   mode: "symmetric"
   temperature: 0.0
+
+# 6. Chế độ trung bình lai (Average Variations)
+# Yêu cầu: Trộn 2 ảnh thành 1, sau đó sinh các biến thể từ ảnh lai đó
+average:
+  mode: "stochastic"
+  temperature: 1.0
+
+# 7. Chế độ nội suy (Interpolation)
+# Yêu cầu: Chuyển đổi dần dần từ ảnh 1 sang ảnh 2
+interpolate:
+  mode: "deterministic"
+  temperature: 0.0

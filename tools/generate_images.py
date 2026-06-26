@@ -86,7 +86,7 @@ def main(cfg: DictConfig):
     
     # 3. Tải dataloader nếu cần
     dataloader = None
-    if mode in ['reconstruct', 'variations', 'contrastive', 'latent_sampling']:
+    if mode in ['reconstruct', 'variations', 'contrastive', 'latent_sampling', 'average', 'interpolate']:
         print(f"Đang tải dữ liệu để lấy mẫu gốc cho mode '{mode}'...")
         data_dir = config.get('dataset', {}).get('data_dir', 'data/MNIST')
         dataset_name = config.get('dataset', {}).get('name', 'MNISTDataset')
@@ -103,6 +103,8 @@ def main(cfg: DictConfig):
             bs = 6
         elif mode == 'reconstruct':
             bs = num_images
+        elif mode in ['average', 'interpolate']:
+            bs = 2
         else:
             bs = 1
             
@@ -121,6 +123,10 @@ def main(cfg: DictConfig):
         generator.generate_contrastive(output_path=output_path)
     elif mode == 'latent_sampling':
         generator.generate_from_latent(num_images=num_images, output_path=output_path)
+    elif mode == 'average':
+        generator.generate_average(num_images=num_images, temperature=temperature, output_path=output_path)
+    elif mode == 'interpolate':
+        generator.generate_interpolate(num_images=num_images, output_path=output_path)
 
 if __name__ == '__main__':
     main()

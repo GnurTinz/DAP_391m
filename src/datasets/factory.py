@@ -5,6 +5,7 @@ from .mnist_dataset import MNISTDataset
 from .own_dataset import OwnDataset
 from .tongji_dataset import TongjiDataset
 from .iitd_dataset import IITDDataset
+from .own_original_dataset import OwnOriginalDataset
 
 class DatasetFactory:
     """
@@ -15,6 +16,7 @@ class DatasetFactory:
         'PalmPrintDataset': PalmPrintDataset,
         'MNISTDataset': MNISTDataset,
         'OwnDataset': OwnDataset,
+        'OwnOriginalDataset': OwnOriginalDataset,
         'tongji': TongjiDataset,
         'iitd': IITDDataset
     }

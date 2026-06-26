@@ -270,3 +270,176 @@ class ImageGenerator:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             vutils.save_image(comparison, output_path, nrow=num_images, padding=2, normalize=False)
             print(f"Đã lưu kết quả sinh từ Latent (Mu & Sigma) tại: {output_path}")
+
+    def generate_average(self, num_images=8, temperature=1.0, output_path='logs/average.png'):
+        """
+        Lấy 2 ảnh, tính trung bình trong không gian Latent (mu_avg = (mu1 + mu2) / 2).
+        Sau đó sinh ra ảnh chính xác từ mu_avg, và các biến thể xung quanh mu_avg.
+        """
+        if self.dataloader is None:
+            raise ValueError("Cần truyền dataloader để lấy ảnh gốc.")
+            
+        # Lấy batch đầu tiên
+        batch_x, _ = next(iter(self.dataloader))
+        if batch_x.size(0) < 2:
+            raise ValueError("Batch size phải >= 2 để lấy 2 ảnh.")
+            
+        x1 = batch_x[0:1].to(self.device)
+        x2 = batch_x[1:2].to(self.device)
+        
+        with torch.no_grad():
+            # Lấy latent representation của 2 ảnh
+            out1 = self.model(x1, decode=True)
+            out2 = self.model(x2, decode=True)
+            
+            mu1 = out1['mu']
+            mu2 = out2['mu']
+            logvar1 = out1['logvar']
+            logvar2 = out2['logvar']
+            
+            # Tính trung bình không gian latent
+            mu_avg = (mu1 + mu2) / 2.0
+            logvar_avg = (logvar1 + logvar2) / 2.0
+            std_avg = torch.exp(0.5 * logvar_avg)
+            
+            # Tạo danh sách các z
+            z_list = [mu_avg] # Mẫu đầu tiên là trung bình chính xác (z = mu_avg)
+            for _ in range(1, num_images):
+                eps = torch.randn_like(std_avg)
+                z_list.append(mu_avg + temperature * eps * std_avg)
+                
+            z_batch = torch.cat(z_list, dim=0)
+            
+            # Giải mã từ z_batch
+            if hasattr(self.model, 'use_decoder') and not self.model.use_decoder:
+                raise ValueError("Mô hình không có decoder.")
+                
+            if hasattr(self.model, 'inc'): # Nếu là U-Net
+                x_avg = (x1 + x2) / 2.0
+                x_expanded = x_avg.expand(num_images, -1, -1, -1).clone()
+                x1_skip = self.model.inc(x_expanded)
+                x2_skip = self.model.down1(x1_skip)
+                x3_skip = self.model.down2(x2_skip)
+                
+                z_dec = self.model.fc_dec(z_batch)
+                z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
+                
+                # FiLM modulation
+                gamma3 = self.model.film_gamma3(z_batch).view(-1, 256, 1, 1)
+                beta3 = self.model.film_beta3(z_batch).view(-1, 256, 1, 1)
+                modulated_x3 = (1 + gamma3) * x3_skip + beta3
+                
+                gamma2 = self.model.film_gamma2(z_batch).view(-1, 128, 1, 1)
+                beta2 = self.model.film_beta2(z_batch).view(-1, 128, 1, 1)
+                modulated_x2 = (1 + gamma2) * x2_skip + beta2
+                
+                u1 = self.model.up1(z_dec, modulated_x3)
+                u2 = self.model.up2(u1, modulated_x2)
+                u3 = self.model.up3(u2, x1_skip)
+                x_hat = self.model.outc(u3)
+                
+                import torch.nn.functional as F
+                if list(x_hat.shape[-2:]) != list(self.model.image_size):
+                    x_hat = F.interpolate(x_hat, size=tuple(self.model.image_size), mode='bilinear', align_corners=False)
+            else: # Nếu là VAE thường
+                x_hat = self.model.decoder(z_batch)
+                
+            # Trực quan hóa
+            x1_display = (x1 + 1) / 2.0
+            x2_display = (x2 + 1) / 2.0
+            x_hat_display = (x_hat + 1) / 2.0
+            
+            # Tạo hàng 1 chứa [Ảnh 1] [Ảnh 2] và các ô trống (trắng) cho đủ num_images cột
+            pad = torch.ones(num_images - 2, *x1_display.shape[1:]).to(self.device)
+            if num_images > 2:
+                row1 = torch.cat([x1_display, x2_display, pad], dim=0)
+            else:
+                row1 = torch.cat([x1_display, x2_display], dim=0)
+                
+            # Tạo hàng 2 chứa x_hat_display (Mẫu 1: Trung bình chính xác, Mẫu 2..n: Biến thể)
+            comparison = torch.cat([row1, x_hat_display], dim=0)
+            
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            vutils.save_image(comparison, output_path, nrow=num_images, padding=2, normalize=False)
+            print(f"Đã lưu kết quả sinh {num_images} ảnh trung bình & biến thể tại: {output_path}")
+
+    def generate_interpolate(self, num_images=8, output_path='logs/interpolate.png'):
+        """
+        Nội suy (Interpolation) tuyến tính giữa 2 ảnh trong không gian Latent.
+        Sinh ra một chuỗi ảnh chuyển đổi mượt mà từ Ảnh 1 sang Ảnh 2.
+        """
+        if self.dataloader is None:
+            raise ValueError("Cần truyền dataloader để lấy ảnh gốc.")
+            
+        # Lấy batch đầu tiên
+        batch_x, _ = next(iter(self.dataloader))
+        if batch_x.size(0) < 2:
+            raise ValueError("Batch size phải >= 2 để lấy 2 ảnh.")
+            
+        x1 = batch_x[0:1].to(self.device)
+        x2 = batch_x[1:2].to(self.device)
+        
+        with torch.no_grad():
+            # Lấy latent representation của 2 ảnh
+            out1 = self.model(x1, decode=True)
+            out2 = self.model(x2, decode=True)
+            
+            mu1 = out1['mu']
+            mu2 = out2['mu']
+            
+            # Nội suy tuyến tính (Linear Interpolation) từ 0 đến 1
+            z_list = []
+            x_skip_list = [] # Dành cho U-Net skip connections
+            alphas = torch.linspace(0, 1, steps=num_images).to(self.device)
+            
+            for alpha in alphas:
+                # Nội suy mu
+                z_t = (1 - alpha) * mu1 + alpha * mu2
+                z_list.append(z_t)
+                
+                # Nội suy skip-connections (pixel-level)
+                x_t = (1 - alpha) * x1 + alpha * x2
+                x_skip_list.append(x_t)
+                
+            z_batch = torch.cat(z_list, dim=0)
+            x_skip_batch = torch.cat(x_skip_list, dim=0)
+            
+            # Giải mã từ z_batch
+            if hasattr(self.model, 'use_decoder') and not self.model.use_decoder:
+                raise ValueError("Mô hình không có decoder.")
+                
+            if hasattr(self.model, 'inc'): # Nếu là U-Net
+                x1_skip = self.model.inc(x_skip_batch)
+                x2_skip = self.model.down1(x1_skip)
+                x3_skip = self.model.down2(x2_skip)
+                
+                z_dec = self.model.fc_dec(z_batch)
+                z_dec = z_dec.view(-1, 512, self.model.bottleneck_size, self.model.bottleneck_size)
+                
+                # FiLM modulation
+                gamma3 = self.model.film_gamma3(z_batch).view(-1, 256, 1, 1)
+                beta3 = self.model.film_beta3(z_batch).view(-1, 256, 1, 1)
+                modulated_x3 = (1 + gamma3) * x3_skip + beta3
+                
+                gamma2 = self.model.film_gamma2(z_batch).view(-1, 128, 1, 1)
+                beta2 = self.model.film_beta2(z_batch).view(-1, 128, 1, 1)
+                modulated_x2 = (1 + gamma2) * x2_skip + beta2
+                
+                u1 = self.model.up1(z_dec, modulated_x3)
+                u2 = self.model.up2(u1, modulated_x2)
+                u3 = self.model.up3(u2, x1_skip)
+                x_hat = self.model.outc(u3)
+                
+                import torch.nn.functional as F
+                if list(x_hat.shape[-2:]) != list(self.model.image_size):
+                    x_hat = F.interpolate(x_hat, size=tuple(self.model.image_size), mode='bilinear', align_corners=False)
+            else: # Nếu là VAE thường
+                x_hat = self.model.decoder(z_batch)
+                
+            # Trực quan hóa
+            x_hat_display = (x_hat + 1) / 2.0
+            
+            # Lưu thành 1 hàng duy nhất thể hiện quá trình chuyển đổi
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            vutils.save_image(x_hat_display, output_path, nrow=num_images, padding=2, normalize=False)
+            print(f"Đã lưu kết quả nội suy (Interpolation) giữa 2 ảnh tại: {output_path}")
