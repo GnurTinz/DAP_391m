@@ -31,8 +31,13 @@ class GenerativeLightningModule(pl.LightningModule):
         self.rec_loss = ReconstructionLoss(loss_cfg)
         self.unc_loss = UncertaintyLoss(loss_cfg)
         
-        self.contrastive_loss = get_contrastive_loss(loss_cfg)
-        print(f"🚀 Sử dụng hàm mất mát đẩy/kéo (Metric Learning): {self.contrastive_loss.__class__.__name__} 🚀")
+        self.use_contrastive = loss_cfg.get('use_contrastive', True)
+        if self.use_contrastive:
+            self.contrastive_loss = get_contrastive_loss(loss_cfg)
+            print(f"🚀 Sử dụng hàm mất mát đẩy/kéo (Metric Learning): {self.contrastive_loss.__class__.__name__} 🚀")
+        else:
+            self.contrastive_loss = None
+            print("⚠️ Contrastive Loss đã bị TẮT theo cấu hình YAML. ⚠️")
         # 3. Khởi tạo Schedulers & Default Weights
         self.loss_scheduler = LossSchedulerManager(config.get('loss_schedules', {}))
         
@@ -98,7 +103,7 @@ class GenerativeLightningModule(pl.LightningModule):
             total_loss += self.lambda_rec * rec
             
         con = torch.tensor(0.0, device=self.device)
-        if 'proj' in outputs:
+        if self.use_contrastive and 'proj' in outputs and self.contrastive_loss is not None:
             con = self.contrastive_loss(outputs['proj'], labels)
             total_loss += self.lambda_con * con
             
