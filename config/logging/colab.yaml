@@ -1,0 +1,5 @@
+# Cấu hình logging chuyên dùng cho Google Colab
+log_dir: "logs"
+experiment_name: ""
+enable_tensorboard: true
+prog_bar_details: false  # Tắt chi tiết loss để Progress Bar của Colab không bị xuống dòng lộn xộn, chỉ hiện Total_Loss

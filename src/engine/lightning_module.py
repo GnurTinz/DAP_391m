@@ -102,11 +102,14 @@ class GenerativeLightningModule(pl.LightningModule):
             con = self.contrastive_loss(outputs['proj'], labels)
             total_loss += self.lambda_con * con
             
+        # Cấu hình hiển thị Progress Bar (Colab thường cần gọn gàng)
+        prog_bar_details = self.config.get('logging', {}).get('prog_bar_details', True)
+        
         # Logging
         self.log(f'{stage}/Total_Loss', total_loss, prog_bar=True, on_step=True, on_epoch=True)
-        self.log(f'{stage}/Recon_Loss', rec, prog_bar=True, on_step=True, on_epoch=True)
-        self.log(f'{stage}/KL_Loss', kl, prog_bar=True, on_step=True, on_epoch=True)
-        self.log(f'{stage}/Con_Loss', con, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(f'{stage}/Recon_Loss', rec, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
+        self.log(f'{stage}/KL_Loss', kl, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
+        self.log(f'{stage}/Con_Loss', con, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
         
         if batch_idx == 0:
             if 'x_hat' in outputs:

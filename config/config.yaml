@@ -5,6 +5,7 @@ defaults:
   - losses: default
   - sampling: default
   - loss_schedules: warmup
+  - logging: default
   - _self_
 
 hydra:
@@ -26,7 +27,3 @@ generation:
   temperature: 10
   output_path: "" # Để trống để lưu vào version_X/generated/
 
-logging:
-  log_dir: "logs"
-  experiment_name: ""
-  enable_tensorboard: true
