@@ -106,7 +106,7 @@ class GenerativeLightningModule(pl.LightningModule):
         prog_bar_details = self.config.get('logging', {}).get('prog_bar_details', True)
         
         # Logging
-        self.log(f'{stage}/Total_Loss', total_loss, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(f'{stage}/Total_Loss', total_loss, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
         self.log(f'{stage}/Recon_Loss', rec, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
         self.log(f'{stage}/KL_Loss', kl, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
         self.log(f'{stage}/Con_Loss', con, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
