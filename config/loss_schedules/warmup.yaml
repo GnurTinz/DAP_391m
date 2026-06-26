@@ -1,0 +1,23 @@
+# Cấu hình Warmup từ từ cho các con Loss theo từng Batch (Step)
+
+beta_kl:
+  type: "linear_step"
+  start_step: 0       # Bắt đầu ngay từ step đầu tiên
+  end_step: 500      # Tăng dần cho đến step 2000 (Khoảng vài epoch tuỳ dataset)
+  start_value: 0.0    # Ban đầu không phạt KL để mạng tập trung học tái tạo ảnh
+  end_value: 0.01     # Đích đến
+
+lambda_con:
+  type: "linear_step"
+  start_step: 500     # Đợi mạng VAE ổn định 500 step đầu (khoảng 1 epoch rưỡi)
+  end_step: 3000      # Sau đó ép Metric Learning (Contrastive) từ từ
+  start_value: 0.0
+  end_value: 0.5
+
+lambda_rec:
+  type: "constant"
+  value: 1.0          # Loss tái tạo ảnh luôn giữ mức 1.0
+
+lambda_unc:
+  type: "constant"
+  value: 0.1          # Loss cho Uncertainty (nếu có)

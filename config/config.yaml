@@ -4,6 +4,7 @@ defaults:
   - training: default
   - losses: default
   - sampling: default
+  - loss_schedules: warmup
   - _self_
 
 hydra:
