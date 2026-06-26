@@ -3,7 +3,7 @@ import sys
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, TQDMProgressBar
 from pytorch_lightning.loggers import TensorBoardLogger
 
 # Add project root to path
@@ -40,10 +40,14 @@ def main(cfg: DictConfig):
         filename='best',
         save_top_k=1,
         save_last=True,
-        monitor='val/Total_Loss',
+        monitor='val/loss',
         mode='min'
     )
     lr_monitor = LearningRateMonitor(logging_interval='step')
+    
+    # Cấu hình thanh tiến trình (TQDM) phù hợp cho Colab/Terminal
+    refresh_rate = cfg.logging.get('progress_bar_refresh_rate', 10)
+    progress_bar = TQDMProgressBar(refresh_rate=refresh_rate)
 
     # Setup Logger
     logger = False
@@ -59,7 +63,7 @@ def main(cfg: DictConfig):
         max_epochs=cfg.training.epochs,
         accelerator=cfg.training.get('accelerator', 'auto'),
         devices=cfg.training.get('devices', 1),
-        callbacks=[checkpoint_callback, lr_monitor],
+        callbacks=[checkpoint_callback, lr_monitor, progress_bar],
         logger=logger,
         log_every_n_steps=cfg.training.log_interval
     )

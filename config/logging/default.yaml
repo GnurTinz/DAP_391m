@@ -3,3 +3,4 @@ log_dir: "logs"
 experiment_name: ""
 enable_tensorboard: true
 prog_bar_details: true  # Hiển thị tất cả các loại loss lên progress bar (thích hợp cho IDE/Terminal rông)
+progress_bar_refresh_rate: 1
