@@ -13,22 +13,3 @@ weights:
   beta_kl: 0.005
   lambda_unc: 0.1
 
-schedules:
-  beta_kl:
-    type: "linear"
-    start_epoch: 0
-    end_epoch: 5
-    start_value: 0.0
-    end_value: 0.005
-  lambda_con:
-    type: "cyclic"
-    start_step: 0
-    cycle_length: 50
-    min_value: 0.0
-    max_value: 1.0
-  lambda_rec:
-    type: "constant"
-    value: 1.0
-  lambda_unc:
-    type: "constant"
-    value: 0.1

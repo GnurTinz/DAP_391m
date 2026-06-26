@@ -41,8 +41,7 @@ def main(cfg: DictConfig):
         save_top_k=1,
         save_last=True,
         monitor='val/Total_Loss_epoch',
-        mode='min',
-        save_on_train_epoch_end =True
+        mode='min'
     )
     lr_monitor = LearningRateMonitor(logging_interval='step')
     
@@ -66,7 +65,8 @@ def main(cfg: DictConfig):
         devices=cfg.training.get('devices', 1),
         callbacks=[checkpoint_callback, lr_monitor, progress_bar],
         logger=logger,
-        log_every_n_steps=cfg.training.log_interval
+        log_every_n_steps=cfg.training.log_interval,
+        check_val_every_n_epoch=1
     )
 
     # Start Training
