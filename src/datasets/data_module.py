@@ -90,6 +90,32 @@ class PalmDataModule(pl.LightningDataModule):
                 print(f"[DATASET INFO] Tập Train: {len(self.train_dataset)} samples")
                 print(f"[DATASET INFO] Tập Val: {len(self.val_dataset)} samples")
                 print("-" * 50)
+                
+            elif split_mode in ['session', 'mixed']:
+                # Dành cho Tongji Dataset tự chia nội bộ
+                self.train_dataset = DatasetFactory.create(
+                    self.dataset_name, 
+                    data_dir=self.data_dir, 
+                    config=self.dataset_cfg, 
+                    is_train=True
+                )
+                
+                self.val_dataset = DatasetFactory.create(
+                    self.dataset_name, 
+                    data_dir=self.data_dir, 
+                    config=self.dataset_cfg, 
+                    is_train=False
+                )
+                
+                print("-" * 50)
+                print(f"[DATASET INFO] Tên Dataset: {self.dataset_name}")
+                print(f"[DATASET INFO] Thư mục: {self.data_dir}")
+                print(f"[DATASET INFO] Split Mode: {split_mode.capitalize()}")
+                print(f"[DATASET INFO] Tập Train: {len(self.train_dataset)} samples")
+                print(f"[DATASET INFO] Tập Val: {len(self.val_dataset)} samples")
+                print("-" * 50)
+            else:
+                raise ValueError(f"Unknown split_mode: {split_mode}")
 
     def train_dataloader(self):
         use_sampler = self.train_cfg.get('use_sampler', False)
@@ -97,13 +123,24 @@ class PalmDataModule(pl.LightningDataModule):
         if use_sampler:
             sampler_type = self.train_cfg.get('sampler_type', 'pk_sampler')
             # Extract underlying targets for the sampler
-            if hasattr(self.train_dataset.dataset, 'get_labels'):
-                all_targets = self.train_dataset.dataset.get_labels()
-            elif hasattr(self.train_dataset.dataset, 'targets'):
-                all_targets = self.train_dataset.dataset.targets
+            
+            # Xử lý trường hợp Subset (nếu dùng random_split)
+            if hasattr(self.train_dataset, 'dataset') and hasattr(self.train_dataset, 'indices'):
+                if hasattr(self.train_dataset.dataset, 'get_labels'):
+                    all_targets = self.train_dataset.dataset.get_labels()
+                elif hasattr(self.train_dataset.dataset, 'targets'):
+                    all_targets = self.train_dataset.dataset.targets
+                else:
+                    raise AttributeError("Dataset must implement 'get_labels()' or 'targets' for sampler.")
+                targets = [all_targets[i] for i in self.train_dataset.indices]
             else:
-                raise AttributeError("Dataset must implement 'get_labels()' or 'targets' for sampler.")
-            targets = [all_targets[i] for i in self.train_dataset.indices]
+                # Xử lý trường hợp trực tiếp (Tongji, IITD)
+                if hasattr(self.train_dataset, 'get_labels'):
+                    targets = self.train_dataset.get_labels()
+                elif hasattr(self.train_dataset, 'targets'):
+                    targets = self.train_dataset.targets
+                else:
+                    raise AttributeError("Dataset must implement 'get_labels()' or 'targets' for sampler.")
             
             if sampler_type == 'pk_sampler':
                 p = self.train_cfg.get('sampler_p', 8)
