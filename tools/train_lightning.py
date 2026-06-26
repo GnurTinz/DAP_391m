@@ -34,21 +34,6 @@ def main(cfg: DictConfig):
     print("Khởi tạo LightningModule...")
     model = GenerativeLightningModule(config_dict)
 
-    # Setup Callbacks
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=cfg.logging.log_dir,
-        filename='best',
-        save_top_k=1,
-        save_last=True,
-        monitor='val/Total_Loss_epoch',
-        mode='min'
-    )
-    lr_monitor = LearningRateMonitor(logging_interval='step')
-    
-    # Cấu hình thanh tiến trình (TQDM) phù hợp cho Colab/Terminal
-    refresh_rate = cfg.logging.get('progress_bar_refresh_rate', 10)
-    progress_bar = TQDMProgressBar(refresh_rate=refresh_rate)
-
     # Setup Logger
     logger = False
     if cfg.logging.enable_tensorboard:
@@ -58,20 +43,6 @@ def main(cfg: DictConfig):
             log_graph=True
         )
 
-    # Initialize Trainer
-    trainer = pl.Trainer(
-        max_epochs=cfg.training.epochs,
-        accelerator=cfg.training.get('accelerator', 'auto'),
-        devices=cfg.training.get('devices', 1),
-        callbacks=[checkpoint_callback, lr_monitor, progress_bar],
-        logger=logger,
-        log_every_n_steps=cfg.training.log_interval,
-        check_val_every_n_epoch=1
-    )
-
-    # Start Training
-    print("Bắt đầu huấn luyện...")
-    
     # Lấy log_dir thật sự của version (ví dụ logs/experiments/lightning_run/version_0)
     version_dir = logger.log_dir if logger else cfg.logging.log_dir
     os.makedirs(version_dir, exist_ok=True)
@@ -79,10 +50,44 @@ def main(cfg: DictConfig):
     # Lưu file config_backup.yaml
     with open(os.path.join(version_dir, "config_backup.yaml"), "w", encoding="utf-8") as f:
         f.write(OmegaConf.to_yaml(cfg, resolve=True))
-        
-    # Cập nhật đường dẫn lưu của ModelCheckpoint thành bên trong version_X/checkpoints
-    checkpoint_callback.dirpath = os.path.join(version_dir, "checkpoints")
+
+    # Setup Callbacks
+    best_checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(version_dir, "checkpoints"),
+        filename='best',
+        save_top_k=1,
+        monitor='val/Total_Loss_epoch',
+        mode='min'
+    )
     
+    last_checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(version_dir, "checkpoints"),
+        filename='last',
+        save_top_k=1,
+        every_n_epochs=1,
+        monitor='step',
+        mode='max'
+    )
+    
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    
+    # Cấu hình thanh tiến trình (TQDM) phù hợp cho Colab/Terminal
+    refresh_rate = cfg.logging.get('progress_bar_refresh_rate', 10)
+    progress_bar = TQDMProgressBar(refresh_rate=refresh_rate)
+
+    # Initialize Trainer
+    trainer = pl.Trainer(
+        max_epochs=cfg.training.epochs,
+        accelerator=cfg.training.get('accelerator', 'auto'),
+        devices=cfg.training.get('devices', 1),
+        callbacks=[best_checkpoint_callback, last_checkpoint_callback, lr_monitor, progress_bar],
+        logger=logger,
+        log_every_n_steps=cfg.training.log_interval,
+        check_val_every_n_epoch=1
+    )
+
+    # Start Training
+    print("Bắt đầu huấn luyện...")
     trainer.fit(model, datamodule=datamodule)
 
 if __name__ == "__main__":
