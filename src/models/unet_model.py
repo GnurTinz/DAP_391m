@@ -165,10 +165,14 @@ class UNetPalmModel(BaseModel):
             beta2 = self.film_beta2(z).view(-1, 128, 1, 1)
             modulated_x2 = (1 + gamma2) * x2 + beta2
             
+            # Áp dụng Dropout2d cho toàn bộ các skip connection thay vì chỉ x1
+            # Ép mạng Decoder bị 'đói' thông tin không gian, bắt buộc phải dùng z_dec
+            d_x3 = self.skip_dropout(modulated_x3)
+            d_x2 = self.skip_dropout(modulated_x2)
             d_x1 = self.skip_dropout(x1)
             
-            u1 = self.up1(z_dec, modulated_x3)
-            u2 = self.up2(u1, modulated_x2)
+            u1 = self.up1(z_dec, d_x3)
+            u2 = self.up2(u1, d_x2)
             u3 = self.up3(u2, d_x1)
             
             x_hat = self.outc(u3)

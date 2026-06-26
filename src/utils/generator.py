@@ -1,6 +1,7 @@
 import torch
 import torchvision.utils as vutils
 import os
+import math
 
 class ImageGenerator:
     """
@@ -192,27 +193,32 @@ class ImageGenerator:
                     # Contrastive Loss ép mu thành cụm định danh. 
                     # Để lấy mẫu giống, ta chỉ lấy mẫu nội bộ trong bán kính sigma (độ bất định).
                     # Dùng temperature (tau) <= 1.0 để không văng khỏi cụm.
-                    tau = 0.5 + (i * 0.1) # Tăng nhẹ độ đa dạng nhưng vẫn giữ danh tính
+                    tau = 0.5 + (i * 0.2) # Tăng nhẹ độ đa dạng nhưng vẫn giữ danh tính
                     eps = torch.randn_like(std)
                     z_pos = mu + tau * eps * std
                     z_list.append(z_pos)
                 else:
-                    # 2. MẪU KHÁC (NEGATIVE / OUT-OF-DISTRIBUTION)
-                    # Do Contrastive Loss hoạt động trên mu, các danh tính khác nhau sẽ bị đẩy ra xa.
-                    # Cách A: Lật ngược cụm định danh (Opposite Identity) bằng cách lấy đối xứng qua gốc (-mu).
-                    # Cách B: Cộng một lượng nhiễu có độ lớn vượt qua biên giới Contrastive (Margin).
+                    # Cách C: Xoay vector tiềm ẩn z (Latent Rotation / Spherical Interpolation)
+                    # Góc xoay theta trải từ 45 độ (pi/4) đến 180 độ (pi) tuỳ theo i
+                    idx = i - (num_images // 2)
+                    max_idx = num_images - (num_images // 2)
+                    theta = (math.pi / 4) + (math.pi * 3 / 4) * (idx / max_idx)
                     
-                    # Ở đây đề xuất kết hợp: Lấy -mu (đẩy ra xa nhất có thể) + độ bất định sigma
+                    # Tìm hướng ngẫu nhiên trực giao với mu để tạo mặt phẳng xoay
+                    v = torch.randn_like(mu)
+                    mu_norm = torch.norm(mu, p=2, dim=1, keepdim=True) + 1e-8
+                    mu_unit = mu / mu_norm
+                    
+                    v_proj = torch.sum(v * mu_unit, dim=1, keepdim=True) * mu_unit
+                    v_ortho = v - v_proj
+                    v_ortho_unit = v_ortho / (torch.norm(v_ortho, p=2, dim=1, keepdim=True) + 1e-8)
+                    
+                    # Xoay mu trên mặt phẳng 2D (mu_unit, v_ortho_unit)
+                    z_rot = mu_norm * (mu_unit * math.cos(theta) + v_ortho_unit * math.sin(theta))
+                    
+                    # Thêm chút nhiễu bất định để ảnh sinh ra trông thực tế
                     eps = torch.randn_like(std)
-                    tau_neg = 2.0 # Bơm thêm nhiễu để tạo sự khác biệt cấu trúc
-                    
-                    # Nếu i chẵn thì dùng cách lật -mu, nếu lẻ thì dùng nhiễu cực đại đẩy văng khỏi mu
-                    if i % 2 == 0:
-                        z_neg = -mu + tau_neg * eps * std
-                    else:
-                        # Văng ra khỏi cụm bằng cách nhân khoảng cách lớn (Margin Factor)
-                        margin_factor = 5.0 + i
-                        z_neg = mu + margin_factor * eps * std
+                    z_neg = z_rot + eps * std
                         
                     z_list.append(z_neg)
                     

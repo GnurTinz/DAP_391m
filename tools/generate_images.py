@@ -100,7 +100,7 @@ def main(cfg: DictConfig):
         dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
         
         if mode == 'contrastive':
-            bs = 64
+            bs = 6
         elif mode == 'reconstruct':
             bs = num_images
         else:
