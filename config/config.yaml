@@ -6,6 +6,7 @@ defaults:
   - sampling: default
   - loss_schedules: warmup
   - logging: default
+  - represent: default
   - _self_
 
 hydra:

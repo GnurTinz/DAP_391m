@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from src.models.verifier import TestTimeVerifier
 
-def optimize_r_from_latent(mu_q, logvar_q, device, verifier=None, freeze_net=False, num_samples=512, steps=50, lr=0.01, alpha=0.1, config=None, verbose=True):
+def optimize_r_from_latent(mu_q, logvar_q, device, verifier=None, freeze_net=False, num_samples=512, max_steps=200, lr=0.01, bce_threshold=0.05, config=None, verbose=True, pbar=None):
     """
     Thực thi bài toán tối ưu r theo sơ đồ pipeline nhưng từ latent (mu, logvar).
     Nhận các thiết lập sampling (pos_strategy, pos_temp, neg_strategy, neg_temp) từ config YAML.
@@ -81,30 +81,39 @@ def optimize_r_from_latent(mu_q, logvar_q, device, verifier=None, freeze_net=Fal
         ])
     criterion = nn.BCEWithLogitsLoss()
 
-    if verbose:
-        print(f"Bắt đầu tối ưu r (Khởi tạo r giống mu_q). Số bước: {steps}")
+    if verbose and pbar is None:
+        print(f"Bắt đầu tối ưu r (Khởi tạo r giống mu_q). Số bước tối đa: {max_steps}, Threshold: {bce_threshold}")
     
-    for step in range(steps):
+    for step in range(max_steps):
         optimizer.zero_grad()
         logits = verifier(z_all, r)
         bce_loss = criterion(logits, y_all)
-        l2_penalty = torch.norm(r - mu_q, p=2) ** 2
-        total_loss = bce_loss + alpha * l2_penalty
+        total_loss = bce_loss
         
         total_loss.backward()
         optimizer.step()
         
-        if verbose and ((step + 1) % 10 == 0 or step == 0):
-            print(f"Step [{step+1}/{steps}] - BCE: {bce_loss.item():.4f}, L2_pen: {l2_penalty.item():.4f}, Total Loss: {total_loss.item():.4f}")
+        if (step + 1) % 10 == 0 or step == 0:
+            if pbar is not None:
+                pbar.set_postfix({"BCE": f"{bce_loss.item():.4f}"})
+            elif verbose:
+                print(f"Step [{step+1}/{max_steps}] - BCE: {bce_loss.item():.4f}")
+                
+        if bce_loss.item() <= bce_threshold:
+            if verbose and pbar is None:
+                print(f"Early stopping at step {step+1} (BCE {bce_loss.item():.4f} <= {bce_threshold})")
+            if pbar is not None:
+                pbar.set_postfix({"BCE": f"{bce_loss.item():.4f}", "Stop": f"Early @ {step+1}"})
+            break
             
-    if verbose:
+    if verbose and pbar is None:
         print("Hoàn tất tối ưu r!")
         distance_moved = torch.norm(r - mu_q, p=2).item()
         print(f"Khoảng cách r đã dịch chuyển so với mu ban đầu: {distance_moved:.4f}")
     
-    return r.detach(), verifier, z_pos
+    return r.detach(), verifier, z_pos, z_neg
 
-def optimize_representation(model, image, config, device, num_samples=512, steps=50, lr=0.01, alpha=0.1):
+def optimize_representation(model, image, config, device, verifier=None, freeze_net=False, num_samples=512, max_steps=200, lr=0.01, bce_threshold=0.05, pbar=None):
     """
     Thực thi bài toán tối ưu r theo sơ đồ pipeline từ ảnh.
     Hỗ trợ config yaml:
@@ -118,7 +127,8 @@ def optimize_representation(model, image, config, device, num_samples=512, steps
     
     with torch.no_grad():
         if mode == 'average' and image.size(0) >= 2:
-            print("Chế độ 'average': Tính trung bình không gian Latent của 2 ảnh.")
+            if pbar is None:
+                print("Chế độ 'average': Tính trung bình không gian Latent của 2 ảnh.")
             x1 = image[0:1]
             x2 = image[1:2]
             
@@ -139,7 +149,7 @@ def optimize_representation(model, image, config, device, num_samples=512, steps
             target_logvar = logvar_avg
             
         else:
-            if mode == 'average':
+            if mode == 'average' and pbar is None:
                 print("Cảnh báo: mode='average' yêu cầu batch size >= 2. Tự động chuyển về 'single'.")
             
             out = model(image[0:1], decode=True)
@@ -148,7 +158,8 @@ def optimize_representation(model, image, config, device, num_samples=512, steps
             x_hat = out.get('x_hat', None)
             
         if re_encode and x_hat is not None:
-            print("Chế độ 're_encode': Đang dùng Feature Extractor trích xuất lại đặc trưng từ ảnh sinh ra (x_hat)...")
+            if pbar is None:
+                print("Chế độ 're_encode': Đang dùng Feature Extractor trích xuất lại đặc trưng từ ảnh sinh ra (x_hat)...")
             out_re = model(x_hat, decode=False)
             target_mu = out_re['mu'].detach()
             target_logvar = out_re['logvar'].detach()
@@ -156,5 +167,5 @@ def optimize_representation(model, image, config, device, num_samples=512, steps
             target_mu = target_mu.detach()
             target_logvar = target_logvar.detach()
         
-    r, verifier, z_pos = optimize_r_from_latent(target_mu, target_logvar, device, verifier=None, freeze_net=False, num_samples=num_samples, steps=steps, lr=lr, alpha=alpha, config=config, verbose=True)
-    return r
+    r, verifier, z_pos, z_neg = optimize_r_from_latent(target_mu, target_logvar, device, verifier=verifier, freeze_net=freeze_net, num_samples=num_samples, max_steps=max_steps, lr=lr, bce_threshold=bce_threshold, config=config, verbose=True, pbar=pbar)
+    return r, verifier, z_pos, z_neg
