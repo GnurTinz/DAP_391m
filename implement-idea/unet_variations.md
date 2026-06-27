@@ -104,7 +104,7 @@ graph TD
     end
     
     %% Verification Phase
-    subgraph Verification Training (Gallery)
+    subgraph VerificationPhase [Verification Training - Gallery]
         P1 & P2 & Pn -->|Train Auxiliary MLP / SVM| Verifier["Verifier Network (MLP phụ)"]
         Verifier --> R["Optimal Representation (r)"]
     end
