@@ -23,7 +23,7 @@ def main(cfg: DictConfig):
 
     save_dir = "logs/baseline2_resnet"
     meta_path = os.path.join(save_dir, "meta.pt")
-    weight_path = os.path.join(save_dir, "resnet_arcface.pth")
+    weight_path = os.path.join(save_dir, "checkpoint_resnet_arcface.pth")
     
     if not os.path.exists(meta_path) or not os.path.exists(weight_path):
         print("Lỗi: Không tìm thấy model hoặc meta data. Vui lòng chạy train.py trước!")
@@ -34,7 +34,14 @@ def main(cfg: DictConfig):
     
     # Init model
     model = ResNetArcFace(num_classes=num_classes, feature_dim=512, pretrained=False).to(device)
-    model.load_state_dict(torch.load(weight_path, map_location=device))
+    
+    # Xử lý load dict an toàn (hỗ trợ cả checkpoint chứa meta data)
+    checkpoint = torch.load(weight_path, map_location=device)
+    if 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        model.load_state_dict(checkpoint)
+        
     model.eval()
 
     # Load dataset
