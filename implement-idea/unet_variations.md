@@ -111,7 +111,7 @@ graph TD
     
     %% Inference / Matching
     Probe[Ảnh chấm công Probe] -->|PalmEncoder + Projector| P_probe["Probe Projected Vector"]
-    P_probe -.->|Matching (Score)| R
+    P_probe -.->|Matching Score| R
 ```
 
 **Chi tiết luồng điểm danh:**
