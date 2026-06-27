@@ -77,3 +77,46 @@ Việc tái tham số hoá (Reparameterization Trick) $\mu + \sigma \times \epsi
 
 ## 5. Tương Thích Gradient Liền Mạch (Gradient Flow)
 Mặc dù có nhiều nhánh tách biệt (Latent Encoder $\to \mu, \sigma$, U-Net Encoder $\to$ FiLM $\to$ Decoder, và Projector), nhưng kiến trúc bảo đảm **đạo hàm (gradient) chảy ngược liên tục** qua tất cả các khối kể cả các khối phụ như FiLM hay MLP Projector mà không bị đứt gãy. Đảm bảo huấn luyện Loss tổng ($Loss_{Recon} + Loss_{Contrastive} + Loss_{KL}$) có thể tối ưu hoá tất cả các trọng số đồng thời.
+
+## 6. Sơ đồ Áp dụng cho Bài toán Điểm danh (Attendance / Verification Flow)
+Dựa trên kiến trúc lõi ở trên, khi đưa vào thực tế để giải quyết bài toán điểm danh (xác thực danh tính), chúng ta khai thác tối đa sức mạnh của **Latent Encoder** kết hợp với tính chất **Stochastic Sampling** và **Projector**.
+
+Vì vector sinh ra ngẫu nhiên ($z$) và giá trị trung bình ($\mu$) đóng chung một vai trò trong không gian, ta sẽ trực tiếp đưa các mẫu sinh $z$ này qua lớp `Projector` để chuyển sang không gian `Projected Vector` (nơi không gian đã được tối ưu độ phân rã bởi Contrastive Loss). Biểu diễn cuối cùng của một người sẽ là kết quả của việc huấn luyện một mô hình phụ (Auxiliary MLP hoặc SVM) dựa trên lượng lớn các mẫu sinh này.
+
+```mermaid
+graph TD
+    %% Extract Phase
+    X[Ảnh người dùng x] -->|PalmEncoder| Mu["mu (μ)"]
+    X -->|PalmEncoder| Logvar["logvar (log σ²)"]
+    
+    %% Sampling Phase (Generation)
+    subgraph Generative Sampling
+        Mu & Logvar -->|Reparameterization| Z1["Sample z_1"]
+        Mu & Logvar -->|Reparameterization| Z2["Sample z_2"]
+        Mu & Logvar -->|...| Zn["Sample z_N"]
+    end
+    
+    %% Projection Phase
+    subgraph Projection Space
+        Z1 -->|Projector MLP| P1["Projected v_1"]
+        Z2 -->|Projector MLP| P2["Projected v_2"]
+        Zn -->|Projector MLP| Pn["Projected v_N"]
+    end
+    
+    %% Verification Phase
+    subgraph Verification Training (Gallery)
+        P1 & P2 & Pn -->|Train Auxiliary MLP / SVM| Verifier["Verifier Network (MLP phụ)"]
+        Verifier --> R["Optimal Representation (r)"]
+    end
+    
+    %% Inference / Matching
+    Probe[Ảnh chấm công Probe] -->|PalmEncoder + Projector| P_probe["Probe Projected Vector"]
+    P_probe -.->|Matching (Score)| R
+```
+
+**Chi tiết luồng điểm danh:**
+1. **Trích xuất:** `PalmEncoder` phân tích ảnh 1 người ra $\mu$ và $\sigma$.
+2. **Sinh mẫu ngẫu nhiên (Generative):** Dựa vào $\mu, \sigma$, mô hình sinh ra hàng trăm vector $z$ ngẫu nhiên quanh tâm $\mu$. Đây là bước "Data Augmentation" ngay trong không gian tiềm ẩn giúp mô phỏng mọi biến thể của vân tay/khuôn mặt.
+3. **Phóng (Projection):** Đẩy toàn bộ các mẫu $z$ qua `Projector`. Vì Projector đã được train với Contrastive Loss, nó sẽ kéo các mẫu này thành một cụm chặt chẽ (Projected Vectors $v$).
+4. **Tối ưu Đại diện (Optimization):** Mạng MLP phụ (Verifier) được huấn luyện trên cụm $N$ mẫu sinh này (Positives) đối chiếu với các mẫu nhiễu (Negatives). Kết quả của quá trình hội tụ là điểm biểu diễn chuẩn nhất $r$ cho người đó (đưa vào Database).
+5. **Điểm danh (Inference):** Khi chấm công, ảnh quét đi qua `PalmEncoder + Projector` ra 1 vector duy nhất, sau đó tính khoảng cách với $r$ trong Database để ra quyết định điểm danh.
