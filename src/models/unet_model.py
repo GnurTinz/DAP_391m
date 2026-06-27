@@ -97,10 +97,24 @@ class UNetPalmModel(BaseModel):
         self.film_gamma2 = nn.Linear(self.latent_dim, 128)
         self.film_beta2 = nn.Linear(self.latent_dim, 128)
         
-        # Light MLP for Contrastive Loss (1-layer)
-        self.projector = nn.Sequential(
-            nn.Linear(self.latent_dim, self.proj_dim)
-        )
+        # Projector for Contrastive Loss
+        use_mlp = config.get('projector', {}).get('use_mlp', True)
+        hidden_dims = config.get('projector', {}).get('hidden_dims', [])
+        act_name = config.get('projector', {}).get('activation', 'ReLU')
+        
+        if use_mlp:
+            activation_cls = getattr(nn, act_name, nn.ReLU)
+            layers = []
+            in_dim = self.latent_dim
+            for h_dim in hidden_dims:
+                layers.append(nn.Linear(in_dim, h_dim))
+                layers.append(activation_cls())
+                in_dim = h_dim
+            layers.append(nn.Linear(in_dim, self.proj_dim))
+            self.projector = nn.Sequential(*layers)
+        else:
+            self.projector = nn.Identity()
+            self.proj_dim = self.latent_dim # When using Identity, output dim matches latent dim
         
         # --- DECODER PATH ---
         if self.use_decoder:

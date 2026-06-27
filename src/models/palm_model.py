@@ -21,12 +21,25 @@ class ProbabilisticPalmModel(BaseModel):
                 decoder_config['image_size'] = config.get('dataset', {}).get('image_size', [128, 128])
             self.decoder = PalmDecoder(decoder_config)
             
-        # Light MLP (Projection Head) cho Contrastive Loss
+        # Projection Head cho Contrastive Loss
         latent_dim = config.get('encoder', {}).get('latent_dim', 256)
         proj_dim = config.get('projector', {}).get('proj_dim', 128)
-        self.projector = nn.Sequential(
-            nn.Linear(latent_dim, proj_dim)
-        )
+        use_mlp = config.get('projector', {}).get('use_mlp', True)
+        hidden_dims = config.get('projector', {}).get('hidden_dims', [])
+        act_name = config.get('projector', {}).get('activation', 'ReLU')
+        
+        if use_mlp:
+            activation_cls = getattr(nn, act_name, nn.ReLU)
+            layers = []
+            in_dim = latent_dim
+            for h_dim in hidden_dims:
+                layers.append(nn.Linear(in_dim, h_dim))
+                layers.append(activation_cls())
+                in_dim = h_dim
+            layers.append(nn.Linear(in_dim, proj_dim))
+            self.projector = nn.Sequential(*layers)
+        else:
+            self.projector = nn.Identity()
 
     def reparameterize(self, mu, logvar, temperature=1.0, mode='stochastic'):
         """
