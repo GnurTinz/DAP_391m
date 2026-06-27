@@ -82,6 +82,8 @@ def main(cfg: DictConfig):
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
 
+    torch.save({'label_map': train_dataset.label_map, 'num_classes': num_classes}, os.path.join(save_dir, "meta.pt"))
+    
     for epoch in range(start_epoch, epochs):
         model.train()
         total_loss = 0
@@ -118,7 +120,6 @@ def main(cfg: DictConfig):
         }, checkpoint_path)
         
     torch.save(model.state_dict(), os.path.join(save_dir, "resnet_arcface.pth"))
-    torch.save({'label_map': train_dataset.label_map, 'num_classes': num_classes}, os.path.join(save_dir, "meta.pt"))
     print(f"\nHoàn tất huấn luyện Baseline 2! Trọng số lưu tại {save_dir}")
 
 if __name__ == '__main__':
