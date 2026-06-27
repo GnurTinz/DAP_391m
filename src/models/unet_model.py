@@ -72,16 +72,19 @@ class UNetPalmModel(BaseModel):
         self.use_decoder = config.get('decoder', {}).get('use_decoder', True)
         self.skip_dropout_rate = config.get('decoder', {}).get('skip_dropout', 0.2)
         
+        unet_channels = config.get('decoder', {}).get('unet_channels', [64, 128, 256, 512])
+        self.c1, self.c2, self.c3, self.c4 = unet_channels
+
         # --- ENCODER PATH ---
-        self.inc = DoubleConv(3, 64)
-        self.down1 = DownBlock(64, 128)
-        self.down2 = DownBlock(128, 256)
-        self.down3 = DownBlock(256, 512)
+        self.inc = DoubleConv(3, self.c1)
+        self.down1 = DownBlock(self.c1, self.c2)
+        self.down2 = DownBlock(self.c2, self.c3)
+        self.down3 = DownBlock(self.c3, self.c4)
         
         # Tính kích thước không gian tại bottleneck
         self.bottleneck_size = self.image_size[0] // 8
         self.bottleneck_size = max(self.bottleneck_size, 1)
-        self.flatten_size = 512 * self.bottleneck_size * self.bottleneck_size
+        self.flatten_size = self.c4 * self.bottleneck_size * self.bottleneck_size
         
         # --- PROBABILISTIC BOTTLENECK ---
         # Sử dụng một mạng riêng biệt (Latent Encoder) để trích xuất mu và logvar
@@ -89,13 +92,13 @@ class UNetPalmModel(BaseModel):
         self.latent_encoder = PalmEncoder(config.get('encoder', {}))
         
         # --- FiLM MODULATION LAYERS ---
-        # Điều khiển skip connection x3 (256 channels)
-        self.film_gamma3 = nn.Linear(self.latent_dim, 256)
-        self.film_beta3 = nn.Linear(self.latent_dim, 256)
+        # Điều khiển skip connection x3
+        self.film_gamma3 = nn.Linear(self.latent_dim, self.c3)
+        self.film_beta3 = nn.Linear(self.latent_dim, self.c3)
         
-        # Điều khiển skip connection x2 (128 channels)
-        self.film_gamma2 = nn.Linear(self.latent_dim, 128)
-        self.film_beta2 = nn.Linear(self.latent_dim, 128)
+        # Điều khiển skip connection x2
+        self.film_gamma2 = nn.Linear(self.latent_dim, self.c2)
+        self.film_beta2 = nn.Linear(self.latent_dim, self.c2)
         
         # Projector for Contrastive Loss
         use_mlp = config.get('projector', {}).get('use_mlp', True)
@@ -119,11 +122,11 @@ class UNetPalmModel(BaseModel):
         # --- DECODER PATH ---
         if self.use_decoder:
             self.fc_dec = nn.Linear(self.latent_dim, self.flatten_size)
-            self.up1 = UpBlock(512, 256)
-            self.up2 = UpBlock(256, 128)
-            self.up3 = UpBlock(128, 64)
+            self.up1 = UpBlock(self.c4, self.c3)
+            self.up2 = UpBlock(self.c3, self.c2)
+            self.up3 = UpBlock(self.c2, self.c1)
             self.outc = nn.Sequential(
-                nn.Conv2d(64, 3, kernel_size=1),
+                nn.Conv2d(self.c1, 3, kernel_size=1),
                 nn.Tanh() # Đưa về [-1, 1]
             )
             self.skip_dropout = nn.Dropout2d(p=self.skip_dropout_rate)
@@ -172,21 +175,21 @@ class UNetPalmModel(BaseModel):
             raise ValueError("Mô hình không sử dụng decoder.")
             
         # 1. Trích xuất Spatial Features từ Deterministic U-Net Encoder
-        x1 = self.inc(x)       # Skip 1 (64 channels)
-        x2 = self.down1(x1)    # Skip 2 (128 channels)
-        x3 = self.down2(x2)    # Skip 3 (256 channels)
+        x1 = self.inc(x)       # Skip 1 (c1 channels)
+        x2 = self.down1(x1)    # Skip 2 (c2 channels)
+        x3 = self.down2(x2)    # Skip 3 (c3 channels)
         
         # 2. Giải mã từ latent z
         z_dec = self.fc_dec(z)
-        z_dec = z_dec.view(-1, 512, self.bottleneck_size, self.bottleneck_size)
+        z_dec = z_dec.view(-1, self.c4, self.bottleneck_size, self.bottleneck_size)
         
         # 3. Kết hợp z vào U-Net thông qua FiLM để điều khiển skip connections
-        gamma3 = self.film_gamma3(z).view(-1, 256, 1, 1)
-        beta3 = self.film_beta3(z).view(-1, 256, 1, 1)
+        gamma3 = self.film_gamma3(z).view(-1, self.c3, 1, 1)
+        beta3 = self.film_beta3(z).view(-1, self.c3, 1, 1)
         modulated_x3 = (1 + gamma3) * x3 + beta3
         
-        gamma2 = self.film_gamma2(z).view(-1, 128, 1, 1)
-        beta2 = self.film_beta2(z).view(-1, 128, 1, 1)
+        gamma2 = self.film_gamma2(z).view(-1, self.c2, 1, 1)
+        beta2 = self.film_beta2(z).view(-1, self.c2, 1, 1)
         modulated_x2 = (1 + gamma2) * x2 + beta2
         
         # Áp dụng Dropout2d cho toàn bộ các skip connection

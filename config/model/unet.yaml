@@ -7,6 +7,7 @@ decoder:
   use_decoder: true
   skip_dropout: 0.5
   image_size: ${dataset.image_size} # Interpolate from dataset config
+  unet_channels: [64, 128, 256, 512] # Default U-Net channels
 verifier:
   hidden_dims: [256, 128]
 projector:

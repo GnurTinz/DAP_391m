@@ -1,0 +1,19 @@
+type: "unet"
+encoder:
+  backbone: "cnn" 
+  # Cấu hình siêu nhẹ (lightweight) cho mạng tích chập
+  hidden_dims: [16, 32, 64]
+  latent_dim: 64
+decoder:
+  use_decoder: true
+  skip_dropout: 0.2
+  image_size: ${dataset.image_size} # Interpolate từ cấu hình dataset
+  unet_channels: [16, 32, 64, 128] # Cấu hình số channel của U-Net Decoder (c1, c2, c3, c4)
+verifier:
+  hidden_dims: [64, 32]
+projector:
+  # Cấu hình Projector nhỏ, gọn
+  use_mlp: true
+  hidden_dims: [64]
+  activation: "LeakyReLU" 
+  proj_dim: 32
