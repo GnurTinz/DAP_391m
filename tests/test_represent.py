@@ -16,12 +16,12 @@ class TestRepresentOptimization(unittest.TestCase):
         logvar_q = torch.randn(1, self.latent_dim)
         
         # Test basic optimization
-        r_c, verifier, z_pos = optimize_r_from_latent(
+        r_c, verifier, z_pos, z_neg = optimize_r_from_latent(
             mu_q, logvar_q, self.device, 
             verifier=None, 
             freeze_net=False, 
             num_samples=self.num_samples, 
-            steps=self.steps, 
+            max_steps=self.steps, 
             verbose=False
         )
         
@@ -40,12 +40,12 @@ class TestRepresentOptimization(unittest.TestCase):
         original_weight = global_verifier.net[0].weight.clone()
         
         # Optimize with freeze_net=True
-        r_c, verifier, z_pos = optimize_r_from_latent(
+        r_c, verifier, z_pos, z_neg = optimize_r_from_latent(
             mu_q, logvar_q, self.device, 
             verifier=global_verifier, 
             freeze_net=True, 
             num_samples=self.num_samples, 
-            steps=self.steps, 
+            max_steps=self.steps, 
             verbose=False
         )
         
@@ -58,12 +58,12 @@ class TestRepresentOptimization(unittest.TestCase):
         mu_q = torch.randn(1, self.latent_dim)
         logvar_q = torch.randn(1, self.latent_dim)
         
-        r_c, verifier, z_pos = optimize_r_from_latent(
+        r_c, verifier, z_pos, z_neg = optimize_r_from_latent(
             mu_q, logvar_q, self.device, 
             verifier=None, 
             freeze_net=False, 
             num_samples=self.num_samples, 
-            steps=self.steps, 
+            max_steps=self.steps, 
             verbose=False
         )
         
