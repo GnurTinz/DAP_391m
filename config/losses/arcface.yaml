@@ -1,0 +1,6 @@
+# Cấu hình cho ArcFace Loss
+contrastive_type: "arcface"
+
+arcface:
+  s: 30.0
+  m: 0.50

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 from .base import BaseLoss
 
 class KLDivLoss(BaseLoss):
@@ -163,12 +164,54 @@ class InfoNCELoss(BaseLoss):
             
         return loss
 
+class ArcFaceLoss(BaseLoss):
+    """
+    ArcFace Loss cho Metric Learning.
+    Yêu cầu config['arcface'] phải có 'num_classes' và 'embedding_size'.
+    """
+    def __init__(self, config: dict):
+        super().__init__(config)
+        arcface_cfg = config.get('arcface', {})
+        self.s = arcface_cfg.get('s', 30.0)
+        self.m = arcface_cfg.get('m', 0.50)
+        
+        self.num_classes = arcface_cfg.get('num_classes', 100)
+        self.embedding_size = arcface_cfg.get('embedding_size', 512)
+        
+        self.weight = nn.Parameter(torch.FloatTensor(self.num_classes, self.embedding_size))
+        nn.init.xavier_uniform_(self.weight)
+        
+        self.ce = nn.CrossEntropyLoss()
+        
+        self.cos_m = math.cos(self.m)
+        self.sin_m = math.sin(self.m)
+        self.th = math.cos(math.pi - self.m)
+        self.mm = math.sin(math.pi - self.m) * self.m
+
+    def forward(self, features, labels):
+        cosine = F.linear(F.normalize(features), F.normalize(self.weight))
+        sine = torch.sqrt(torch.clamp(1.0 - torch.pow(cosine, 2), 1e-9, 1.0))
+        
+        phi = cosine * self.cos_m - sine * self.sin_m
+        phi = torch.where(cosine > self.th, phi, cosine - self.mm)
+        
+        one_hot = torch.zeros(cosine.size(), device=features.device)
+        one_hot.scatter_(1, labels.view(-1, 1).long(), 1)
+        
+        output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
+        output *= self.s
+        
+        return self.ce(output, labels)
+
+
 def get_contrastive_loss(config: dict):
     loss_type = config.get('contrastive_type', 'supcon')
     if loss_type == 'ms_loss':
         return MultiSimilarityLoss(config)
     elif loss_type == 'infonce':
         return InfoNCELoss(config)
+    elif loss_type == 'arcface':
+        return ArcFaceLoss(config)
     else:
         return SupConLoss(config)
 
