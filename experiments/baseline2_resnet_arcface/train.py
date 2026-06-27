@@ -38,7 +38,7 @@ class LabelRemapDataset(Dataset):
         
     def __getitem__(self, idx):
         orig_idx, new_label = self.samples[idx]
-        img, orig_lbl, is_pos = self.dataset[orig_idx]
+        img = self.dataset[orig_idx][0]
         return img, new_label
         
 @hydra.main(version_base=None, config_path="../../config", config_name="config")
@@ -71,8 +71,18 @@ def main(cfg: DictConfig):
     epochs = 30
     save_dir = "logs/baseline2_resnet"
     os.makedirs(save_dir, exist_ok=True)
-    
-    for epoch in range(epochs):
+    checkpoint_path = os.path.join(save_dir, "checkpoint_resnet_arcface.pth")
+    start_epoch = 0
+
+    if os.path.exists(checkpoint_path):
+        print(f"Resuming from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+
+    for epoch in range(start_epoch, epochs):
         model.train()
         total_loss = 0
         correct = 0
@@ -97,6 +107,15 @@ def main(cfg: DictConfig):
             pbar.set_postfix({'Loss': f'{loss.item():.4f}', 'Acc': f'{100.*correct/total:.2f}%'})
             
         scheduler.step()
+        
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict(),
+            'label_map': train_dataset.label_map,
+            'num_classes': num_classes
+        }, checkpoint_path)
         
     torch.save(model.state_dict(), os.path.join(save_dir, "resnet_arcface.pth"))
     torch.save({'label_map': train_dataset.label_map, 'num_classes': num_classes}, os.path.join(save_dir, "meta.pt"))
