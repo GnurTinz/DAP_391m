@@ -12,3 +12,4 @@ mediapipe
 scikit-image
 Pillow
 tensorboard
+pytorch-metric-learning
