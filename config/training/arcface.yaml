@@ -1,0 +1,32 @@
+# Cấu hình huấn luyện tối ưu dành riêng cho mô hình dùng ArcFace Loss
+
+epochs: 50
+batch_size: 64 # ArcFace rất thích batch_size to để có nhiều Negative samples đẩy nhau
+num_workers: 4
+
+# Optimizer & Scheduler
+learning_rate: 0.1
+weight_decay: 0.0005
+optimizer: "AdamW"
+
+# StepLR hoặc MultiStepLR đều được
+scheduler: "MultiStepLR"
+scheduler_milestones: [20, 35, 45]
+scheduler_gamma: 0.1
+
+log_interval: 10
+save_interval: 1
+
+# TẮT sampler để dùng ngẫu nhiên (Shuffle) - Cách tốt nhất cho ArcFace
+use_sampler: false
+
+# Nếu dữ liệu của bạn có người 100 ảnh, người 2 ảnh thì hãy BẬT 2 dòng dưới này lên:
+# use_sampler: true
+# sampler_type: "weighted"
+
+seed: 42
+accelerator: "auto" # options: "auto", "cpu", "gpu", "tpu", "mps"
+devices: 1 # number of devices (GPUs/TPUs) to use
+
+# Dùng để chạy tiếp checkpoint cũ
+resume_from_checkpoint: null
