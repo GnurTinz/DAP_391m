@@ -13,4 +13,4 @@ projector:
   hidden_dims: [128] # Optional, defines intermediate layers
   activation: "LeakyReLU" # Chọn hàm kích hoạt, vd: ReLU, LeakyReLU, GELU, SiLU
   proj_dim: 128
-  use_bn: false
+  use_bn: true

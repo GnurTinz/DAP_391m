@@ -13,3 +13,4 @@ projector:
   hidden_dims: [128]
   activation: "LeakyReLU" 
   proj_dim: 128
+  use_bn: true

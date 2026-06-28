@@ -10,4 +10,5 @@ decoder:
 verifier:
   hidden_dims: [128]
 projector:
-  proj_dim: 32
+  proj_dim: 128
+  use_bn: true
