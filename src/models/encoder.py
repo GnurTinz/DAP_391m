@@ -3,6 +3,25 @@ import torch.nn as nn
 from .base import BaseModel
 import torchvision.models as models
 
+from .ccnet import ccnet as CCNet
+
+class CCNetBackboneWrapper(nn.Module):
+    """
+    Wrap CCNet thành một backbone thuần túy:
+    input  : (B, 1, H, W)  — grayscale, giống CCNet gốc
+    output : (B, 6144)      — feature vector fe (concat fc + fc1 output)
+    """
+    def __init__(self, num_classes: int = 231, weight: float = 0.8):
+        super().__init__()
+        self.ccnet = CCNet(num_classes=num_classes, weight=weight)
+        self.out_features = 6144  # 4096 (fc) + 2048 (fc1), xem forward() gốc
+
+    def forward(self, x):
+        # CCNet gốc: _, fe = ccnet(x, y=None)
+        # fe đã được L2-normalize trong forward()
+        _, fe = self.ccnet(x, y=None)
+        return fe  # shape: (B, 6144)
+
 class PalmEncoder(BaseModel):
     """
     Encoder that outputs mu and log_var.
@@ -42,6 +61,21 @@ class PalmEncoder(BaseModel):
                 nn.Flatten()
             )
             in_features = hidden_dims[-1]
+
+        #ccnet backbone
+        if backbone_name == 'ccnet':
+            num_classes = self.config.get('num_classes', 231)
+            weight      = self.config.get('ccnet_weight', 0.8)
+            self.backbone = CCNetBackboneWrapper(
+                num_classes=num_classes,
+                weight=weight
+            )
+            in_features = self.backbone.out_features  # 6144
+
+            # CCNet chỉ nhận grayscale (1 channel).
+            # Nếu pipeline của bạn feed ảnh RGB, cần chuyển ở đây:
+            self.to_gray = self.config.get('force_grayscale', False)
+
         elif hasattr(models, backbone_name):
             # Dynamic loading from torchvision
             model_func = getattr(models, backbone_name)
