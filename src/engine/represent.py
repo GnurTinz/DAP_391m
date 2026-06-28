@@ -169,3 +169,85 @@ def optimize_representation(model, image, config, device, verifier=None, freeze_
         
     r, verifier, z_pos, z_neg = optimize_r_from_latent(target_mu, target_logvar, device, verifier=verifier, freeze_net=freeze_net, num_samples=num_samples, max_steps=max_steps, lr=lr, bce_threshold=bce_threshold, config=config, verbose=True, pbar=pbar)
     return r, verifier, z_pos, z_neg
+
+def optimize_r_in_projected_space(mu_c, logvar_c, mu_others, logvar_others, model, device, config=None, num_samples=256, max_steps=100, lr=0.01, loss_type='bce'):
+    """
+    Tối ưu vector r trực tiếp trong không gian Projected (đầu ra của Projector) 
+    dựa trên N mẫu Positives sinh từ (mu_c, logvar_c) và N mẫu Negatives sinh từ các (mu, logvar) khác.
+    """
+    if config is None:
+        config = {}
+        
+    rep_config = config.get('represent', {})
+    pos_temp = rep_config.get('pos_temperature', 1.0)
+    
+    latent_dim = mu_c.size(1)
+    
+    # 1. Sinh mẫu Positive Z
+    sigma_c = torch.exp(0.5 * logvar_c)
+    eps_pos = torch.randn(num_samples, latent_dim, device=device)
+    z_pos = mu_c + pos_temp * sigma_c * eps_pos
+    
+    # 2. Sinh mẫu Negative Z (từ mu_others)
+    if mu_others is not None and len(mu_others) > 0:
+        idx_neg = torch.randint(0, len(mu_others), (num_samples,))
+        mu_neg_batch = mu_others[idx_neg]
+        logvar_neg_batch = logvar_others[idx_neg]
+        sigma_neg_batch = torch.exp(0.5 * logvar_neg_batch)
+        eps_neg = torch.randn(num_samples, latent_dim, device=device)
+        z_neg = mu_neg_batch + pos_temp * sigma_neg_batch * eps_neg
+    else:
+        # Fallback nếu không có other samples (hiếm)
+        z_neg = torch.randn(num_samples, latent_dim, device=device)
+        
+    # 3. Lấy Projected Vectors V_pos và V_neg
+    model.eval()
+    with torch.no_grad():
+        v_pos = model.projector(z_pos)
+        v_neg = model.projector(z_neg)
+        
+        v_pos = torch.nn.functional.normalize(v_pos, p=2, dim=1)
+        v_neg = torch.nn.functional.normalize(v_neg, p=2, dim=1)
+        
+    # 4. Khởi tạo r là trung bình của v_pos
+    r = nn.Parameter(v_pos.mean(dim=0, keepdim=True).detach())
+    
+    optimizer = optim.Adam([r], lr=lr)
+    
+    if loss_type == 'bce':
+        criterion = nn.BCEWithLogitsLoss()
+        y_pos = torch.ones(num_samples, 1, device=device)
+        y_neg = torch.zeros(num_samples, 1, device=device)
+        
+    for step in range(max_steps):
+        optimizer.zero_grad()
+        
+        # Đảm bảo r nằm trên hypersphere
+        r_norm = torch.nn.functional.normalize(r, p=2, dim=1)
+        
+        # Cosine similarity
+        sim_pos = torch.mm(v_pos, r_norm.t()) # (N, 1)
+        sim_neg = torch.mm(v_neg, r_norm.t()) # (N, 1)
+        
+        if loss_type == 'bce':
+            # Scale logits để BCE hội tụ mượt (scale factor s=10.0)
+            logits_pos = sim_pos * 10.0 
+            logits_neg = sim_neg * 10.0
+            
+            logits = torch.cat([logits_pos, logits_neg], dim=0)
+            targets = torch.cat([y_pos, y_neg], dim=0)
+            
+            loss = criterion(logits, targets)
+        elif loss_type == 'triplet':
+            # Triplet margin loss (margin = 0.5)
+            loss = torch.clamp(sim_neg - sim_pos + 0.5, min=0.0).mean()
+        else:
+            # Fallback (Contrastive basic)
+            loss = ((1.0 - sim_pos)**2).mean() + (sim_neg**2).mean()
+            
+        loss.backward()
+        optimizer.step()
+        
+    # Trả về r chuẩn hóa cuối cùng
+    r_final = torch.nn.functional.normalize(r.detach(), p=2, dim=1)
+    return r_final.squeeze(0)

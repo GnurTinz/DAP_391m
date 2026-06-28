@@ -42,6 +42,12 @@ class PalmEncoder(BaseModel):
                 nn.Flatten()
             )
             in_features = hidden_dims[-1]
+        elif backbone_name == 'ccnet':
+            from src.models.ccnet import CCNetBackbone
+            in_channels = self.config.get('in_channels', 3)
+            weight = self.config.get('ccnet_weight', 0.8)
+            self.backbone = CCNetBackbone(in_channels=in_channels, weight=weight)
+            in_features = 2048
         elif hasattr(models, backbone_name):
             # Dynamic loading from torchvision
             model_func = getattr(models, backbone_name)

@@ -1,0 +1,19 @@
+type: "unet"
+encoder:
+  backbone: "ccnet"
+  in_channels: 3
+  ccnet_weight: 0.8
+  latent_dim: 128
+decoder:
+  use_decoder: true
+  skip_dropout: 0.5
+  image_size: ${dataset.image_size} # Interpolate from dataset config
+  unet_channels: [64, 128, 256, 512] # Default U-Net channels
+verifier:
+  hidden_dims: [256, 128]
+projector:
+  use_mlp: true
+  hidden_dims: [128] # Optional, defines intermediate layers
+  activation: "LeakyReLU" # Chọn hàm kích hoạt, vd: ReLU, LeakyReLU, GELU, SiLU
+  proj_dim: 128
+  use_bn: true
