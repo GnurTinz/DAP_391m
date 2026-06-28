@@ -1,0 +1,24 @@
+# TỔNG HỢP CÁC CÂU LỆNH TRAINING CHO DỰ ÁN PALMPRINT
+
+# 1. BỘ TỨ SOTA (State-of-The-Art) - KIẾN TRÚC MẠNH NHẤT
+# Dùng ResNet18 pretrained siêu mạnh, tối ưu ArcFace, có dùng Sampler ép Negative/Positive
+python tools/train_lightning.py model=unet_resnet losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+
+# 2. EDGE-AI LITE (NHẸ, NHANH, ĐÁP ỨNG THỜI GIAN THỰC)
+# Dùng PalmNet khởi tạo Gabor, cực nhẹ, hội tụ đường vân siêu tốc
+python tools/train_lightning.py model=unet_palmnet_gabor losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+
+# 3. MẠNG CCNET (KIỂM THỬ THUẬT TOÁN)
+# Thử nghiệm Backbone CCNet
+python tools/train_lightning.py model=unet_ccnet losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+
+# 4. CHUẨN HÓA CƠ BẢN (KHÔNG GABOR)
+# Dùng PalmNet khởi tạo Kaiming/Xavier ngẫu nhiên
+python tools/train_lightning.py model=unet_palmnet losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+
+# 5. DÀNH CHO BÀI TOÁN TOY DATASET (MNIST) / DEBUG PIPELINE
+# Train U-Net CNN cơ bản với hàm loss tái tạo chuẩn, không dùng ArcFace
+python tools/train_lightning.py model=unet losses=default loss_schedules=warmup training=default dataset=mnist dataset.batch_size=64
+
+# --- GHI CHÚ ---
+# Các lệnh trên chạy từ thư mục gốc: e:\palm

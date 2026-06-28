@@ -1,6 +1,6 @@
 name: "iitd"
 data_dir: "data/IITD Palmprint V1/Segmented"
-image_size: [128, 128]
+image_size: [150, 150]
 channels: 3
 num_classes: 230 # Giả định IITD có 230 người
 

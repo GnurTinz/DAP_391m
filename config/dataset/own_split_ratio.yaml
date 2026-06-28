@@ -1,6 +1,6 @@
 name: "OwnDataset"
 data_dir: "data/scripts/script1"
-image_size: [128, 128]
+image_size: [256, 256]
 split_mode: "ratio"
 hand_filter: "both"
 train_ratio: 0.9

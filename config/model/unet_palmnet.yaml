@@ -1,0 +1,19 @@
+type: "unet"
+encoder:
+  backbone: "palmnet" # Sử dụng kiến trúc lấy cảm hứng từ PalmNet
+  in_channels: 3
+  palmnet_gabor_init: false # Khởi tạo trọng số ngẫu nhiên Kaiming/Xavier như CNN thông thường
+  latent_dim: 128
+decoder:
+  use_decoder: true
+  skip_dropout: 0.5
+  image_size: ${dataset.image_size} # Interpolate from dataset config
+  unet_channels: [64, 128, 256, 512] # Default U-Net channels
+verifier:
+  hidden_dims: [256, 128]
+projector:
+  use_mlp: true
+  hidden_dims: [256, 256] 
+  activation: "LeakyReLU"
+  proj_dim: 128
+  use_bn: true

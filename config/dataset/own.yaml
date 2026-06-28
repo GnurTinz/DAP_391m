@@ -1,6 +1,6 @@
 name: "OwnDataset"
 data_dir: "data/scripts/script1"
-image_size: [32, 32]
+image_size: [256, 256]
 open_set_ratio: 0.0
 
 

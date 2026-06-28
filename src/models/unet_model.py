@@ -67,6 +67,8 @@ class UNetPalmModel(BaseModel):
     def __init__(self, config: dict):
         super().__init__(config)
         self.image_size = config.get('decoder', {}).get('image_size', [128, 128])
+        if isinstance(self.image_size, int):
+            self.image_size = [self.image_size, self.image_size]
         self.latent_dim = config.get('encoder', {}).get('latent_dim', 128)
         self.proj_dim = config.get('projector', {}).get('proj_dim', 128)
         self.use_decoder = config.get('decoder', {}).get('use_decoder', True)
@@ -74,9 +76,10 @@ class UNetPalmModel(BaseModel):
         
         unet_channels = config.get('decoder', {}).get('unet_channels', [64, 128, 256, 512])
         self.c1, self.c2, self.c3, self.c4 = unet_channels
+        self.in_channels = config.get('encoder', {}).get('in_channels', 3)
 
         # --- ENCODER PATH ---
-        self.inc = DoubleConv(3, self.c1)
+        self.inc = DoubleConv(self.in_channels, self.c1)
         self.down1 = DownBlock(self.c1, self.c2)
         self.down2 = DownBlock(self.c2, self.c3)
         self.down3 = DownBlock(self.c3, self.c4)
@@ -130,7 +133,7 @@ class UNetPalmModel(BaseModel):
             self.up2 = UpBlock(self.c3, self.c2)
             self.up3 = UpBlock(self.c2, self.c1)
             self.outc = nn.Sequential(
-                nn.Conv2d(self.c1, 3, kernel_size=1),
+                nn.Conv2d(self.c1, self.in_channels, kernel_size=1),
                 nn.Tanh() # Đưa về [-1, 1]
             )
             self.skip_dropout = nn.Dropout2d(p=self.skip_dropout_rate)
