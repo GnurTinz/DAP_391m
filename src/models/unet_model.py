@@ -166,7 +166,7 @@ class UNetPalmModel(BaseModel):
             'mu': mu,
             'logvar': logvar,
             'z': z,
-            'proj': self.projector(mu)
+            'proj': self.projector(z)
         }
         
         if decode and self.use_decoder:

@@ -5,7 +5,7 @@ encoder:
   latent_dim: 256
 decoder:
   use_decoder: true
-  skip_dropout: 0.5
+  skip_dropout: 0.8
   image_size: ${dataset.image_size}
 verifier:
   hidden_dims: [512, 256]

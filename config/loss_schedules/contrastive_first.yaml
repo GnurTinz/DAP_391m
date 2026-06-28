@@ -16,9 +16,9 @@ lambda_rec:
 
 beta_kl:
   type: "linear_step"
-  start_step: 2500
+  start_step: 0
   end_step: 5000
-  start_value: 0.0
+  start_value: 0.00001
   end_value: 0.005
 
 lambda_unc:
