@@ -16,7 +16,7 @@ else:
 from src.models.unet_model import UNetPalmModel
 from src.losses.custom import KLDivLoss, ReconstructionLoss, SupConLoss
 from src.datasets.mnist_dataset import MNISTDataset
-from src.datasets.sampler import PKSampler
+from pytorch_metric_learning.samplers import MPerClassSampler
 
 class TestUNetConvergence(unittest.TestCase):
     """
@@ -117,9 +117,9 @@ class TestUNetConvergence(unittest.TestCase):
         # Tải MNIST
         dataset = MNISTDataset(data_dir="data/MNIST", config={"image_size": [32, 32]}, is_train=True)
         
-        # Lấy một batch với PKSampler
-        sampler = PKSampler(dataset.get_labels(), p=2, k=2) # batch_size = 4
-        dataloader = DataLoader(dataset, batch_sampler=sampler)
+        # Lấy một batch với MPerClassSampler
+        sampler = MPerClassSampler(dataset.get_labels(), m=2, length_before_new_iter=len(dataset), batch_size=4) 
+        dataloader = DataLoader(dataset, sampler=sampler, batch_size=4)
         
         batch_x, batch_y = next(iter(dataloader))
         

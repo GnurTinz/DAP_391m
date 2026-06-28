@@ -2,7 +2,11 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 import torch
 from src.datasets.factory import DatasetFactory
-from src.datasets.sampler import PKSampler, WeightedClassSampler
+
+try:
+    from pytorch_metric_learning.samplers import MPerClassSampler
+except ImportError:
+    pass # Managed in custom.py
 
 class PalmDataModule(pl.LightningDataModule):
     def __init__(self, config: dict):
@@ -142,18 +146,21 @@ class PalmDataModule(pl.LightningDataModule):
                 else:
                     raise AttributeError("Dataset must implement 'get_labels()' or 'targets' for sampler.")
             
-            if sampler_type == 'pk_sampler':
-                p = self.train_cfg.get('sampler_p', 8)
+            if sampler_type == 'pk_sampler' or sampler_type == '':
+                # p = self.train_cfg.get('sampler_p', 8) # p is derived from batch_size // k
                 k = self.train_cfg.get('sampler_k', 4)
-                sampler = PKSampler(targets, p=p, k=k)
-            elif sampler_type == 'weighted':
-                sampler = WeightedClassSampler(targets, batch_size=self.batch_size)
+                # MPerClassSampler acts as a standard sampler, yielding indices
+                sampler = MPerClassSampler(labels=targets, m=k, batch_size=self.batch_size, length_before_new_iter=len(targets))
+            else:
+                raise ValueError(f"Không hỗ trợ sampler_type: '{sampler_type}'. Chỉ hỗ trợ 'pk_sampler'.")
                 
             return DataLoader(
                 self.train_dataset,
-                batch_sampler=sampler,
+                sampler=sampler,
+                batch_size=self.batch_size,
                 num_workers=self.num_workers,
-                persistent_workers=self.num_workers > 0
+                persistent_workers=self.num_workers > 0,
+                drop_last=True
             )
         else:
             return DataLoader(

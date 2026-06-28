@@ -4,6 +4,9 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch
 from tqdm import tqdm
+from sklearn.metrics import roc_curve
+from scipy.optimize import brentq
+from scipy.interpolate import interp1d
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if project_root not in sys.path:
@@ -75,9 +78,8 @@ def main(cfg: DictConfig):
     print("="*50)
     gallery_features = {}
     for person_id, indices in tqdm(train_indices.items(), desc="Gallery"):
-        idx_to_use = indices[:2]
         if dataset is not None and hasattr(dataset, 'samples'):
-            images = [dataset[idx][0] for idx in idx_to_use]
+            images = [dataset[idx][0] for idx in indices]
             batch_images = torch.stack(images).to(device)
             with torch.no_grad():
                 features = model(batch_images) # (N, 512)
@@ -94,37 +96,70 @@ def main(cfg: DictConfig):
     correct_matches = 0
     total_probes = 0
     
+    y_true = []
+    y_scores = []
+    
     for probe_label, indices in tqdm(val_indices.items(), desc="Probe Matching"):
         if len(indices) == 0:
             continue
             
-        idx_to_use = indices[:2]
-        images = [dataset[idx][0] for idx in idx_to_use]
-        batch_images = torch.stack(images).to(device)
+        # Mỗi ảnh trong tập Val là một lần chấm công độc lập (Independent Probe)
+        for idx in indices:
+            img = dataset[idx][0].unsqueeze(0).to(device)
             
-        with torch.no_grad():
-            probe_feats = model(batch_images)
-            probe_feats = torch.nn.functional.normalize(probe_feats, p=2, dim=1)
-            probe_avg = probe_feats.mean(dim=0, keepdim=True).cpu()
-            probe_avg = torch.nn.functional.normalize(probe_avg, p=2, dim=1)
-            
-        best_match = None
-        best_sim = -float('inf')
-        
-        for gal_label, gal_feat in gallery_features.items():
-            # Cosine similarity
-            sim = torch.mm(probe_avg, gal_feat.t()).item()
-            if sim > best_sim:
-                best_sim = sim
-                best_match = gal_label
+            with torch.no_grad():
+                probe_feat = model(img)
+                probe_feat = torch.nn.functional.normalize(probe_feat, p=2, dim=1).cpu()
                 
-        is_correct = best_match == probe_label
-        if is_correct:
-            correct_matches += 1
-        total_probes += 1
+            best_match = None
+            best_sim = -float('inf')
+            
+            for gal_label, gal_feat in gallery_features.items():
+                # Cosine similarity
+                sim = torch.mm(probe_feat, gal_feat.t()).item()
+                
+                y_true.append(1 if gal_label == probe_label else 0)
+                y_scores.append(sim)
+                
+                if sim > best_sim:
+                    best_sim = sim
+                    best_match = gal_label
+                    
+            is_correct = best_match == probe_label
+            if is_correct:
+                correct_matches += 1
+            total_probes += 1
         
     accuracy = (correct_matches / total_probes) * 100 if total_probes > 0 else 0
     print(f"\n=> Matching Accuracy (Rank-1) using ResNet+ArcFace: {accuracy:.2f}% ({correct_matches}/{total_probes})")
+    
+    # Tính EER
+    if len(y_true) > 0 and len(set(y_true)) > 1:
+        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+        eer = brentq(lambda x: 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
+    else:
+        eer = 0.0
+        
+    print(f"=> Equal Error Rate (EER): {eer*100:.2f}%")
+    
+    # Ghi chú kết quả ra file txt
+    from datetime import datetime
+    
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    model_config_str = OmegaConf.to_yaml(cfg.get('model', {}))
+    
+    result_txt_path = os.path.join(save_dir, "eval_results.txt")
+    with open(result_txt_path, "a", encoding="utf-8") as f:
+        f.write(f"\n[{current_time}] === KẾT QUẢ ĐÁNH GIÁ (BASELINE 2 - ResNet+ArcFace) ===\n")
+        f.write(f"Dataset: {dataset_name} ({data_dir})\n")
+        f.write(f"Total Persons: {len(person_indices)}\n")
+        f.write(f"Total Probes: {total_probes}\n")
+        f.write(f"Matching Accuracy (Rank-1): {accuracy:.2f}%\n")
+        f.write(f"Equal Error Rate (EER): {eer*100:.2f}%\n")
+        f.write("--- Model Configuration ---\n")
+        f.write(f"{model_config_str}\n")
+        f.write("="*70 + "\n")
+    print(f"Đã ghi thêm (append) kết quả đánh giá tại: {result_txt_path}")
 
 if __name__ == '__main__':
     main()

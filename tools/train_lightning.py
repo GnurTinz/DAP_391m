@@ -14,6 +14,20 @@ from src.datasets.data_module import PalmDataModule
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig):
+    # 1. KIỂM TRA RESUME ĐỂ LOAD LẠI CONFIG GỐC CỦA VERSION
+    ckpt_path = cfg.training.get('resume_from_checkpoint', None)
+    if ckpt_path and os.path.exists(ckpt_path):
+        version_dir = os.path.dirname(os.path.dirname(ckpt_path))
+        backup_config_path = os.path.join(version_dir, "config_backup.yaml")
+        if os.path.exists(backup_config_path):
+            print(f"🔄 Đang tải lại cấu hình gốc từ: {backup_config_path}")
+            backup_cfg = OmegaConf.load(backup_config_path)
+            # Phải giữ lại thông tin resume_from_checkpoint
+            if 'training' not in backup_cfg:
+                backup_cfg.training = {}
+            backup_cfg.training.resume_from_checkpoint = ckpt_path
+            cfg = backup_cfg
+
     print("="*50)
     print("CẤU HÌNH HUẤN LUYỆN (HYDRA OMEGACONF)")
     print(OmegaConf.to_yaml(cfg))
@@ -29,6 +43,26 @@ def main(cfg: DictConfig):
     # Initialize DataModule
     print("Khởi tạo DataModule...")
     datamodule = PalmDataModule(config_dict)
+    
+    # Kích hoạt setup để lấy số lượng class thật của dataset (rất quan trọng cho ArcFace)
+    datamodule.setup(stage='fit')
+    
+    # Tính toán num_classes từ dataset
+    if hasattr(datamodule.train_dataset, 'dataset') and hasattr(datamodule.train_dataset.dataset, 'samples'):
+        # Trường hợp random_split (dùng Subset)
+        labels = [datamodule.train_dataset.dataset.samples[i][1] for i in datamodule.train_dataset.indices]
+        num_classes = max(labels) + 1 if len(labels) > 0 else 100
+    elif hasattr(datamodule.train_dataset, 'samples'):
+        # Trường hợp chia sẵn Train/Val
+        labels = [item[1] for item in datamodule.train_dataset.samples]
+        num_classes = max(labels) + 1 if len(labels) > 0 else 100
+    else:
+        num_classes = config_dict.get('dataset', {}).get('num_classes', 100)
+        
+    print(f"Tự động nhận diện số lượng classes: {num_classes}")
+    if 'dataset' not in config_dict:
+        config_dict['dataset'] = {}
+    config_dict['dataset']['num_classes'] = num_classes
 
     # Initialize LightningModule
     print("Khởi tạo LightningModule...")
@@ -37,11 +71,18 @@ def main(cfg: DictConfig):
     # Setup Logger
     logger = False
     if cfg.logging.enable_tensorboard:
-        logger = TensorBoardLogger(
-            save_dir=cfg.logging.log_dir,
-            name=cfg.logging.experiment_name,
-            log_graph=True
-        )
+        kwargs = {
+            "save_dir": cfg.logging.log_dir,
+            "name": cfg.logging.experiment_name,
+            "log_graph": True
+        }
+        # Nếu chạy tiếp (resume), trỏ thẳng logger vào đúng thư mục version cũ
+        ckpt_path = cfg.training.get('resume_from_checkpoint', None)
+        if ckpt_path and os.path.exists(ckpt_path):
+            version_dir = os.path.dirname(os.path.dirname(ckpt_path))
+            kwargs["version"] = os.path.basename(version_dir)
+            
+        logger = TensorBoardLogger(**kwargs)
 
     # Lấy log_dir thật sự của version (ví dụ logs/experiments/lightning_run/version_0)
     version_dir = logger.log_dir if logger else cfg.logging.log_dir
@@ -88,7 +129,13 @@ def main(cfg: DictConfig):
 
     # Start Training
     print("Bắt đầu huấn luyện...")
-    trainer.fit(model, datamodule=datamodule)
+    
+    ckpt_path = cfg.training.get('resume_from_checkpoint', None)
+    if ckpt_path and os.path.exists(ckpt_path):
+        print(f"Tiếp tục huấn luyện từ checkpoint: {ckpt_path}")
+        trainer.fit(model, datamodule=datamodule, ckpt_path=ckpt_path)
+    else:
+        trainer.fit(model, datamodule=datamodule)
 
 if __name__ == "__main__":
     main()

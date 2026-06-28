@@ -14,7 +14,7 @@ else:
 from src.models.palm_model import ProbabilisticPalmModel
 from src.losses.custom import KLDivLoss, ReconstructionLoss, SupConLoss
 from src.datasets.mnist_dataset import MNISTDataset
-from src.datasets.sampler import PKSampler
+from pytorch_metric_learning.samplers import MPerClassSampler
 from torch.utils.data import DataLoader
 import os
 
@@ -144,9 +144,9 @@ class TestVAEConvergence(unittest.TestCase):
         # Tải MNIST
         dataset = MNISTDataset(data_dir="data/MNIST", config={"image_size": [32, 32]}, is_train=True)
         
-        # PKSampler đảm bảo batch có cặp nhãn dương tính để tính Contrastive Loss hợp lệ
-        sampler = PKSampler(dataset.get_labels(), p=2, k=2) # 2 danh tính, mỗi danh tính 2 ảnh -> batch_size=4
-        dataloader = DataLoader(dataset, batch_sampler=sampler)
+        # MPerClassSampler đảm bảo batch có cặp nhãn dương tính để tính Contrastive Loss hợp lệ
+        sampler = MPerClassSampler(dataset.get_labels(), m=2, length_before_new_iter=len(dataset), batch_size=4) 
+        dataloader = DataLoader(dataset, sampler=sampler, batch_size=4)
         
         batch_x, batch_y = next(iter(dataloader))
         

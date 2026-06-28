@@ -9,4 +9,7 @@ decoder:
 verifier:
   hidden_dims: [128]
 projector:
-  proj_dim: 64
+  use_mlp: true
+  hidden_dims: [128]
+  activation: "LeakyReLU" 
+  proj_dim: 128

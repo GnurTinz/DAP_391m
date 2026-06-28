@@ -11,5 +11,5 @@ verifier:
 projector:
   use_mlp: true
   hidden_dims: [128] # Optional, defines intermediate layers
-  activation: "ReLU" # Chọn hàm kích hoạt, vd: ReLU, LeakyReLU, GELU, SiLU
-  proj_dim: 64
+  activation: "LeakyReLU" # Chọn hàm kích hoạt, vd: ReLU, LeakyReLU, GELU, SiLU
+  proj_dim: 128

@@ -33,8 +33,22 @@ class GenerativeLightningModule(pl.LightningModule):
         
         self.use_contrastive = loss_cfg.get('use_contrastive', True)
         if self.use_contrastive:
+            # Tự động lấy số chiều chiếu (proj_dim) truyền vào ArcFace
+            proj_dim = model_config.get('projector', {}).get('proj_dim', 128)
+            if not model_config.get('projector', {}).get('use_mlp', True):
+                proj_dim = model_config.get('encoder', {}).get('latent_dim', 128)
+                
+            if 'arcface' not in loss_cfg:
+                loss_cfg['arcface'] = {}
+            # Ép embedding_size của ArcFace theo cấu hình model (ví dụ 32) thay vì 512 mặc định
+            loss_cfg['arcface']['embedding_size'] = proj_dim
+            
+            # Ép num_classes của ArcFace theo cấu hình dataset
+            num_classes = config.get('dataset', {}).get('num_classes', 100)
+            loss_cfg['arcface']['num_classes'] = num_classes
+            
             self.contrastive_loss = get_contrastive_loss(loss_cfg)
-            print(f"🚀 Sử dụng hàm mất mát đẩy/kéo (Metric Learning): {self.contrastive_loss.__class__.__name__} 🚀")
+            print(f"🚀 Sử dụng hàm mất mát đẩy/kéo (Metric Learning): {self.contrastive_loss.__class__.__name__} (dim={proj_dim}, classes={num_classes}) 🚀")
         else:
             self.contrastive_loss = None
             print("⚠️ Contrastive Loss đã bị TẮT theo cấu hình YAML. ⚠️")
@@ -107,6 +121,14 @@ class GenerativeLightningModule(pl.LightningModule):
             con = self.contrastive_loss(outputs['proj'], labels)
             total_loss += self.lambda_con * con
             
+            # Nếu hàm loss có sinh ra logits (vd: ArcFaceLoss), ta tính thêm Accuracy
+            if hasattr(self.contrastive_loss, 'last_logits'):
+                logits = self.contrastive_loss.last_logits
+                preds = torch.argmax(logits, dim=1)
+                acc = (preds == labels).float().mean()
+                prog_bar_details = self.config.get('logging', {}).get('prog_bar_details', True)
+                self.log(f'{stage}/Accuracy', acc, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
+            
         # Cấu hình hiển thị Progress Bar (Colab thường cần gọn gàng)
         prog_bar_details = self.config.get('logging', {}).get('prog_bar_details', True)
         
@@ -160,6 +182,16 @@ class GenerativeLightningModule(pl.LightningModule):
         scheduler_name = train_cfg.get('scheduler', 'CosineAnnealingLR')
         if scheduler_name == 'CosineAnnealingLR':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=train_cfg.get('epochs', 30))
+            return [optimizer], [scheduler]
+        elif scheduler_name == 'StepLR':
+            step_size = train_cfg.get('scheduler_step_size', 10)
+            gamma = train_cfg.get('scheduler_gamma', 0.1)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+            return [optimizer], [scheduler]
+        elif scheduler_name == 'MultiStepLR':
+            milestones = train_cfg.get('scheduler_milestones', [15, 25])
+            gamma = train_cfg.get('scheduler_gamma', 0.1)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=gamma)
             return [optimizer], [scheduler]
             
         return optimizer

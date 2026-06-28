@@ -5,19 +5,19 @@
 
 lambda_con:
   type: "constant"
-  value: 0.5          # Ép ngay từ đầu để định hình không gian
+  value: 0.9          # Ép ngay từ đầu để định hình không gian
 
 lambda_rec:
   type: "linear_step"
-  start_step: 1200
-  end_step: 2400
+  start_step: 1000
+  end_step: 3000
   start_value: 0.0
   end_value: 1.0
 
 beta_kl:
   type: "linear_step"
-  start_step: 1800
-  end_step: 3000
+  start_step: 2500
+  end_step: 5000
   start_value: 0.0
   end_value: 0.005
 
