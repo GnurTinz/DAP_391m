@@ -7,6 +7,16 @@ hand_filter: "both"
 split_mode: "ratio"
 train_ratio: 0.9
 
-# Nếu bạn muốn cấu hình thêm các tham số data augmentation khác thì thêm ở đây
-transform:
-  resize: true
+# Đã đổi 'transform' thành 'transforms' cho đúng code BaseDataset
+transforms:
+  random_grayscale: 0.5
+  random_rotation: 15 # Giảm từ 30 xuống 15 để không làm hỏng vân tay (sinh trắc học)
+  color_jitter:
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+    hue: 0.1
+  random_affine:
+    translate: [0.1, 0.1]
+    scale: [0.9, 1.1]
+  # KHÔNG dùng random_horizontal_flip vì lật trái/phải sẽ biến bàn tay thành tay của người khác!

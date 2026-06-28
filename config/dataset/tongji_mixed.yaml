@@ -3,19 +3,19 @@ data_dir: "data/Tongji"
 image_size: [128, 128]
 channels: 3
 num_classes: 600
+train_classes: 500
 
 # Chế độ mixed: Gộp session1 và session2 lại rùi chia tỷ lệ 80/20
 split_mode: "mixed"
 train_ratio: 0.8
 seed: 42
 
-
 transforms:
-  random_horizontal_flip: 0.5
+  random_grayscale: 0.5
   random_rotation: 15
   color_jitter:
-    brightness: 0.1
-    contrast: 0.1
+    brightness: 0.2
+    contrast: 0.2
   random_affine:
-    degrees: 0
     translate: [0.1, 0.1]
+    scale: [0.9, 1.1]

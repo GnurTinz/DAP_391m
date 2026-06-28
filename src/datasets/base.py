@@ -34,6 +34,11 @@ class BaseDataset(Dataset, ABC):
                 degrees = transform_cfg.get('random_rotation', 15)
                 t_list.append(transforms.RandomRotation(degrees))
                 
+            if 'random_grayscale' in transform_cfg:
+                p = transform_cfg.get('random_grayscale', 0.5)
+                # RandomGrayscale automatically keeps 3 channels but sets R=G=B
+                t_list.append(transforms.RandomGrayscale(p=p))
+                
             if 'color_jitter' in transform_cfg:
                 cj = transform_cfg['color_jitter']
                 t_list.append(transforms.ColorJitter(
