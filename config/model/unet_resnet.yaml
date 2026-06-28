@@ -13,7 +13,7 @@ verifier:
   hidden_dims: [256, 128]
 projector:
   use_mlp: true
-  hidden_dims: [128] # Optional, defines intermediate layers
+  hidden_dims: [256] # Optional, defines intermediate layers
   activation: "LeakyReLU" # Khuyến nghị dùng LeakyReLU cho ArcFace
   proj_dim: 128 # Tăng từ 64 lên 128 để không gian biểu diễn ArcFace rộng hơn
   use_bn: true # Bắt buộc True cho ArcFace

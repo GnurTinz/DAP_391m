@@ -1,28 +1,26 @@
 # Cấu hình huấn luyện tối ưu dành riêng cho mô hình dùng ArcFace Loss
 
-epochs: 50
-batch_size: 64 # ArcFace rất thích batch_size to để có nhiều Negative samples đẩy nhau
+epochs: 100 # Tăng lên 100 để đủ thời gian cho các phase của contrastive_first (lên tới 5000 steps)
+batch_size: 32 # Đã được cập nhật theo yêu cầu
 num_workers: 4
 
 # Optimizer & Scheduler
-learning_rate: 0.1
+learning_rate: 0.001 # Cực kỳ quan trọng: AdamW với ResNet pretrained KHÔNG ĐƯỢC dùng 0.1 (sẽ nổ gradient)
 weight_decay: 0.0005
 optimizer: "AdamW"
 
 # StepLR hoặc MultiStepLR đều được
-scheduler: "MultiStepLR"
-scheduler_milestones: [20, 35, 45]
-scheduler_gamma: 0.1
+scheduler: "CosineAnnealingLR" # Cosine giúp làm mượt quá trình chuyển đổi loss schedule
 
 log_interval: 10
 save_interval: 1
 
-# TẮT sampler để dùng ngẫu nhiên (Shuffle) - Cách tốt nhất cho ArcFace
+# BẬT sampler (Bắt buộc): Vì kịch bản 'contrastive_first' cần loss Contrastive.
+# Contrastive Loss yêu cầu trong 1 batch PHẢI CÓ ảnh cùng người (Positive Pair).
 use_sampler: false
-
-# Nếu dữ liệu của bạn có người 100 ảnh, người 2 ảnh thì hãy BẬT 2 dòng dưới này lên:
-# use_sampler: true
-# sampler_type: "weighted"
+sampler_type: "pk_sampler"
+sampler_p: 8  # 8 người
+sampler_k: 4  # Mỗi người 4 ảnh (8 x 4 = 32 batch size)
 
 seed: 42
 accelerator: "auto" # options: "auto", "cpu", "gpu", "tpu", "mps"
