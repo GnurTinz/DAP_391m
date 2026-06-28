@@ -63,7 +63,7 @@ class PalmEncoder(BaseModel):
             in_features = hidden_dims[-1]
 
         #ccnet backbone
-        if backbone_name == 'ccnet':
+        elif backbone_name == 'ccnet':
             num_classes = self.config.get('num_classes', 231)
             weight      = self.config.get('ccnet_weight', 0.8)
             self.backbone = CCNetBackboneWrapper(
