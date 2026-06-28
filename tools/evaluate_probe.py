@@ -2,205 +2,272 @@ import os
 import sys
 import hydra
 from omegaconf import DictConfig, OmegaConf
+import logging
 import torch
-from tqdm import tqdm
 import numpy as np
+import random
+import csv
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+from sklearn.metrics import roc_curve
+from scipy.optimize import brentq
+from scipy.interpolate import interp1d
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-if sys.stdout.encoding != 'utf-8':
-    sys.stdout.reconfigure(encoding='utf-8')
-
+from src.datasets import DatasetFactory
 from src.models.palm_model import ProbabilisticPalmModel
 from src.models.unet_model import UNetPalmModel
-from src.datasets import DatasetFactory
-from src.engine.represent import optimize_representation
-from src.metrics.evaluator import LatentEvaluator
-from src.models.verifier import TestTimeVerifier
+from tools.test_pipeline import set_seed, setup_logger, load_models
+
+def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer):
+    """
+    Chấm công 2 bước: Tính Cosine Similarity, check Max Uncertainty.
+    """
+    logger.info("Starting Probe inference...")
+    
+    threshold = config.get('testing', {}).get('verify_threshold', 0.5)
+    margin = config.get('testing', {}).get('margin', 0.1)
+    u_max = config.get('testing', {}).get('max_uncertainty', 2.0)
+    use_uncertainty = config.get('testing', {}).get('use_uncertainty', True)
+    
+    # Đã hỗ trợ đa mẫu (multiple templates per person)
+    gallery_labels_flat = []
+    gallery_rs_flat = []
+    
+    for k in gallery.keys():
+        r_c = gallery[k]
+        if r_c.dim() == 1:
+            r_c = r_c.unsqueeze(0)
+        for i in range(r_c.size(0)):
+            gallery_rs_flat.append(r_c[i])
+            gallery_labels_flat.append(k)
+            
+    gallery_rs = torch.stack(gallery_rs_flat).to(device) # (Total_Templates, Proj_Dim)
+    gallery_labels = list(gallery.keys())
+    
+    total_queries = 0
+    total_known_queries = 0
+    correct_accepts = 0
+    false_accepts = 0
+    false_rejects = 0
+    true_rejects = 0
+    
+    y_true = []
+    y_scores = []
+    
+    optimize_probe = config.get('testing', {}).get('optimize_probe', True)
+    loss_type = config.get('testing', {}).get('gallery_loss', 'bce')
+    num_samples = config.get('testing', {}).get('gallery_samples', 256)
+    max_steps = config.get('testing', {}).get('gallery_max_steps', 100)
+    lr = config.get('testing', {}).get('gallery_lr', 0.01)
+    
+    palm_model.eval()
+    from src.engine.represent import optimize_r_in_projected_space
+    
+    for images, labels in tqdm(query_loader, desc="Inference"):
+        images = images.to(device)
+        labels = labels.tolist()
+        
+        with torch.no_grad():
+            outputs = palm_model(images, decode=False)
+            mu_q_batch = outputs['mu']
+            logvar_q_batch = outputs['logvar']
+            
+            if not optimize_probe:
+                p_probe_batch = palm_model.projector(mu_q_batch)
+                p_probe_batch = torch.nn.functional.normalize(p_probe_batch, p=2, dim=1)
+                
+        for i in range(images.size(0)):
+            total_queries += 1
+            true_label = labels[i]
+            
+            mu_q = mu_q_batch[i:i+1]
+            logvar_q = logvar_q_batch[i:i+1]
+            uncertainty = torch.exp(0.5 * logvar_q).mean().item()
+            
+            if optimize_probe:
+                idx_others = [j for j in range(images.size(0)) if j != i]
+                if len(idx_others) > 0:
+                    mu_others = mu_q_batch[idx_others]
+                    logvar_others = logvar_q_batch[idx_others]
+                else:
+                    mu_others = None
+                    logvar_others = None
+                    
+                p_probe = optimize_r_in_projected_space(
+                    mu_q, logvar_q, mu_others, logvar_others,
+                    model=palm_model, device=device, config=config,
+                    num_samples=num_samples, loss_type=loss_type, max_steps=max_steps, lr=lr,
+                    verbose=False
+                ).unsqueeze(0)
+            else:
+                p_probe = p_probe_batch[i:i+1]
+                
+            decision = "REJECT"
+            reason = ""
+            predicted_label = -1
+            best_score = 0.0
+            
+            # 1. Đo độ tương đồng Cosine
+            sim_scores = torch.mm(p_probe, gallery_rs.t()).squeeze(0) # (Total_Templates,)
+            topk_scores, topk_idx = torch.topk(sim_scores, k=min(2, len(gallery_labels_flat)))
+            
+            best_score = topk_scores[0].item()
+            predicted_label = gallery_labels_flat[topk_idx[0].item()]
+            top2_score = topk_scores[1].item() if len(topk_scores) > 1 else -1.0
+            
+            # Tính Metrics EER (Lấy điểm số cao nhất thuộc class tương ứng nếu có)
+            if true_label in gallery_labels:
+                # Tìm điểm cao nhất của đúng true_label
+                idx_true_all = [idx for idx, val in enumerate(gallery_labels_flat) if val == true_label]
+                score_true = sim_scores[idx_true_all].max().item()
+                y_true.append(1)
+                y_scores.append(score_true)
+                
+                # Thêm 1 mẫu negative (người khác có điểm cao nhất)
+                # Tìm index đầu tiên thuộc người khác
+                idx_false = -1
+                for i_idx in topk_idx:
+                    if gallery_labels_flat[i_idx.item()] != true_label:
+                        idx_false = i_idx.item()
+                        break
+                if idx_false != -1:
+                    y_true.append(0)
+                    y_scores.append(sim_scores[idx_false].item())
+            else:
+                y_true.append(0)
+                y_scores.append(best_score)
+            
+            # 2. Đưa ra Quyết định (Bỏ qua Verifier, chỉ lấy Predicted Label)
+            decision = "ACCEPT"
+            reason = "Rank-1 Search"
+            # predicted_label đã được gán sẵn là top 1 similarity
+            
+            is_correct = (predicted_label == true_label)
+            
+            if true_label in gallery_labels:
+                total_known_queries += 1
+                if is_correct:
+                    correct_accepts += 1
+                else:
+                    false_accepts += 1
+            else:
+                # Mẫu ngoài (Unknown) mà bị gán bừa vào Gallery -> False Accept
+                false_accepts += 1
+            
+            if csv_writer:
+                csv_writer.writerow([
+                    total_queries, true_label, predicted_label,
+                    f"{best_score:.4f}", f"{uncertainty:.4f}",
+                    decision, reason, is_correct
+                ])
+                
+    logger.info("=== Inference Summary ===")
+    logger.info(f"Total Queries: {total_queries}")
+    logger.info(f"Correct Accepts (TAR): {correct_accepts}")
+    logger.info(f"False Accepts (FAR): {false_accepts}")
+    logger.info(f"False Rejects (FRR): {false_rejects}")
+    logger.info(f"True Rejects (Unknowns): {true_rejects}")
+    
+    accuracy = (correct_accepts / total_queries) * 100 if total_queries > 0 else 0
+    logger.info(f"Overall Accuracy: {accuracy:.2f}%")
+    
+    classification_acc = (correct_accepts / total_known_queries) * 100 if total_known_queries > 0 else 0
+    logger.info(f"Classification Accuracy (Closed-Set): {classification_acc:.2f}%")
+    
+    if len(y_true) > 0 and len(set(y_true)) > 1:
+        fpr, tpr, thresholds_roc = roc_curve(y_true, y_scores)
+        eer = brentq(lambda x: 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
+        logger.info(f"Equal Error Rate (EER): {eer*100:.2f}%")
+    else:
+        logger.info("Equal Error Rate (EER): N/A (Not enough classes)")
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig):
     config = OmegaConf.to_container(cfg, resolve=True)
-    
+    seed = config.get('seed', 42)
     checkpoint_path = config.get('checkpoint', '')
-    rep_cfg = config.get('represent', {})
-    samples = rep_cfg.get('num_samples', 512)
-    max_steps = rep_cfg.get('max_steps', 200)
-    lr = rep_cfg.get('lr', 0.01)
-    bce_threshold = rep_cfg.get('bce_threshold', 0.05)
+    
+    import re
+    version_dir = "logs/unversioned_results"
+    if checkpoint_path:
+        match = re.search(r'(.*[\\/]version_\d+)', checkpoint_path.replace('\\', '/'))
+        if match:
+            version_dir = match.group(1)
+            
+            # Auto-load config_backup.yaml
+            backup_cfg_path = os.path.join(version_dir, 'config_backup.yaml')
+            if os.path.isfile(backup_cfg_path):
+                try:
+                    backup_cfg = OmegaConf.load(backup_cfg_path)
+                    if 'model' in backup_cfg:
+                        config['model'] = OmegaConf.to_container(backup_cfg['model'], resolve=True)
+                    if 'dataset' in backup_cfg and 'image_size' in backup_cfg['dataset']:
+                        if 'dataset' not in config:
+                            config['dataset'] = {}
+                        config['dataset']['image_size'] = backup_cfg['dataset']['image_size']
+                except Exception as e:
+                    pass
+
+    output_dir = os.path.join(version_dir, 'test_results')
+    os.makedirs(output_dir, exist_ok=True)
+    set_seed(seed)
+    
+    if 'testing' not in config:
+        config['testing'] = {
+            'verify_threshold': 0.5,
+            'margin': 0.05,
+            'max_uncertainty': 2.0,
+            'use_uncertainty': True
+        }
+
+    logger, log_file, timestamp = setup_logger(output_dir, 'evaluate_probe')
+    logger.info(f"Logs will be saved to: {log_file}")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Sử dụng device: {device}")
+    palm_model = load_models(config, device, logger, checkpoint_path)
+    
+    gallery_save_path = os.path.join(output_dir, 'gallery.pt')
+    if not os.path.isfile(gallery_save_path):
+        logger.error(f"Gallery file not found at {gallery_save_path}! Please run build_gallery.py first.")
+        return
+        
+    logger.info(f"Loading gallery from {gallery_save_path}")
+    gallery = torch.load(gallery_save_path, map_location=device)
+    
+    data_dir = config.get('dataset', {}).get('data_dir', 'data/PolyU')
+    dataset_name = config.get('dataset', {}).get('name', 'PolyU')
+    batch_size = config.get('testing', {}).get('batch_size', 32)
+    num_workers = config.get('testing', {}).get('num_workers', 2)
+    
+    logger.info("=== Dataset Configuration ===")
+    logger.info(f"Dataset Name: {dataset_name}")
+    logger.info(f"Data Directory: {data_dir}")
+    
+    if dataset_name.upper() == 'POLYU':
+        dataset_name = 'PalmPrintDataset'
+    elif dataset_name.upper() == 'MNIST':
+        dataset_name = 'MNISTDataset'
+        
+    try:
+        # Probe từ tập Test/Val
+        test_dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=config.get('dataset', {}), is_train=False)
+    except ValueError as e:
+        logger.error(str(e))
+        return
 
-    # 1. Tải checkpoint nếu có
-    checkpoint_data = None
-    if checkpoint_path and os.path.exists(checkpoint_path):
-        checkpoint_data = torch.load(checkpoint_path, map_location=device)
-
-    # 2. Khởi tạo mô hình dựa vào config (ưu tiên config lưu trong checkpoint)
-    model_config = config.get('model', {})
-    if checkpoint_data and 'hyper_parameters' in checkpoint_data and 'model' in checkpoint_data['hyper_parameters']:
-        model_config = checkpoint_data['hyper_parameters']['model']
-        
-    model_type = model_config.get('type', 'default')
+    query_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
-    if 'decoder' not in model_config:
-        model_config['decoder'] = {}
-    if 'image_size' not in model_config['decoder']:
-        model_config['decoder']['image_size'] = config.get('dataset', {}).get('image_size', [128, 128])
+    csv_path = os.path.join(output_dir, f"test_results_{timestamp}.csv")
+    csv_file = open(csv_path, mode='w', newline='', encoding='utf-8')
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(['Query_ID', 'True_Label', 'Predicted_Label', 'Best_Score', 'Uncertainty', 'Decision', 'Reason', 'Is_Correct'])
     
-    if model_type == 'unet':
-        model = UNetPalmModel(model_config).to(device)
-    else:
-        model = ProbabilisticPalmModel(model_config).to(device)
+    evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer)
     
-    # 3. Nạp trọng số từ checkpoint
-    if checkpoint_data:
-        state_dict = checkpoint_data.get('model_state_dict', checkpoint_data.get('state_dict', checkpoint_data))
-        clean_state_dict = {k[6:] if k.startswith('model.') else k: v for k, v in state_dict.items()}
-        model.load_state_dict(clean_state_dict, strict=False)
-    else:
-        print("Cảnh báo: Không có checkpoint hợp lệ.")
-
-    # Load file Gallery
-    if checkpoint_path:
-        version_dir = os.path.dirname(os.path.dirname(checkpoint_path))
-    else:
-        version_dir = "logs/unversioned_results"
-        
-    gallery_path = os.path.join(version_dir, 'gallery.pt')
-    if not os.path.exists(gallery_path):
-        print(f"Lỗi: Không tìm thấy file {gallery_path}! Hãy chạy build_gallery.py trước.")
-        sys.exit(1)
-        
-    print(f"Đang tải Gallery r và Verifier từ {gallery_path}...")
-    gallery_data = torch.load(gallery_path, map_location=device)
-    gallery_r = gallery_data['gallery_r']
-    verifier_state_dict = gallery_data['verifier_state_dict']
-    
-    # Khởi tạo lại Verifier
-    latent_dim = next(iter(gallery_r.values())).size(1)
-    shared_verifier = TestTimeVerifier(latent_dim, hidden_dim=128).to(device)
-    if verifier_state_dict is not None:
-        shared_verifier.load_state_dict(verifier_state_dict)
-    shared_verifier.eval()
-
-    # Khởi tạo Dataset
-    dataset_config = config.get('dataset', {})
-    data_dir = dataset_config.get('data_dir', 'data/collect')
-    dataset_name = dataset_config.get('name', 'OwnOriginalDataset')
-    
-    print(f"\nĐang tải dữ liệu từ {dataset_name} ({data_dir})...")
-    dataset = DatasetFactory.create(dataset_name, data_dir=data_dir, config=dataset_config, is_train=False)
-    
-    val_person_indices = {}
-    if hasattr(dataset, 'samples') and len(dataset.samples) > 0:
-        person_indices = {}
-        for i, item in enumerate(dataset.samples):
-            label = item[1]
-            if label not in person_indices:
-                person_indices[label] = []
-            person_indices[label].append(i)
-            
-        for label, indices in person_indices.items():
-            split_idx = max(1, len(indices) // 2)
-            val_person_indices[label] = indices[split_idx:]
-    else:
-        val_person_indices = {0: [1]}
-        
-    print(f"Tổng số Person trên tập Val: {len([v for v in val_person_indices.values() if len(v)>0])}")
-
-    # ==========================================
-    # Trích xuất r trên tập Val (Probe)
-    # ==========================================
-    print("\n" + "="*50)
-    print(" BẮT ĐẦU TRÍCH XUẤT PROBE TỪ TẬP VAL ")
-    print("="*50)
-    
-    probe_r = {}
-    all_pos_scores = []
-    all_neg_scores = []
-    
-    # Để code gọn hơn, ta có thể ghi đè verbose=False trong optimize_r_from_latent.
-    # Nhưng do đã dùng tqdm, ta sẽ không in dòng thông báo liên tục nữa.
-    pbar = tqdm(val_person_indices.items(), desc="Xử lý Person")
-    for person_id, indices in pbar:
-        if len(indices) == 0:
-            continue
-            
-        idx_to_use = indices[:2]
-        if dataset is not None and hasattr(dataset, 'samples'):
-            images = [dataset[idx][0] for idx in idx_to_use]
-            batch_images = torch.stack(images).to(device)
-        else:
-            img_size = dataset_config.get('image_size', [128, 128])
-            batch_images = torch.randn(len(idx_to_use), 3, img_size[0], img_size[1]).to(device)
-            
-        optimized_r, _, z_pos, z_neg = optimize_representation(
-            model=model,
-            image=batch_images,
-            config=config,
-            device=device,
-            verifier=shared_verifier,
-            freeze_net=True,
-            num_samples=samples,
-            max_steps=max_steps,
-            lr=lr,
-            bce_threshold=bce_threshold,
-            pbar=pbar
-        )
-        
-        probe_r[person_id] = optimized_r.cpu().detach()
-        
-        # Đánh giá EER
-        with torch.no_grad():
-            r_pos = optimized_r.expand(z_pos.size(0), -1).to(device)
-            r_neg = optimized_r.expand(z_neg.size(0), -1).to(device)
-            
-            pos_scores = torch.sigmoid(shared_verifier(z_pos, r_pos)).cpu().numpy().flatten()
-            neg_scores = torch.sigmoid(shared_verifier(z_neg, r_neg)).cpu().numpy().flatten()
-            
-            all_pos_scores.extend(pos_scores)
-            all_neg_scores.extend(neg_scores)
-
-    # ==========================================
-    # Đánh giá Khớp r (Matching)
-    # ==========================================
-    print("\n" + "="*50)
-    print(" KẾT QUẢ SO SÁNH VAL VÀ TRAIN (MATCHING) ")
-    print("="*50)
-    
-    correct_matches = 0
-    total_probes = len(probe_r)
-    
-    for probe_label, p_r in probe_r.items():
-        best_match = None
-        best_dist = float('inf')
-        
-        for gal_label, g_r in gallery_r.items():
-            dist = torch.norm(p_r - g_r, p=2).item()
-            if dist < best_dist:
-                best_dist = dist
-                best_match = gal_label
-                
-        is_correct = best_match == probe_label
-        if is_correct:
-            correct_matches += 1
-        
-    accuracy = (correct_matches / total_probes) * 100 if total_probes > 0 else 0
-    print(f"=> Matching Accuracy (Rank-1): {accuracy:.2f}% ({correct_matches}/{total_probes})")
-    
-    # Tính EER
-    latent_eval = LatentEvaluator()
-    eer, best_thresh = latent_eval.compute_eer_from_scores(np.array(all_pos_scores), np.array(all_neg_scores))
-    if eer is not None:
-        print(f"=> Global Equal Error Rate (EER): {eer:.4f} (tại ngưỡng {best_thresh:.4f})")
-    else:
-        print("=> EER: Lỗi tính toán (thiếu mẫu).")
-
-    print("\nHoàn tất toàn bộ chu trình đánh giá!")
+    csv_file.close()
+    logger.info("Evaluation finished successfully.")
 
 if __name__ == '__main__':
     main()

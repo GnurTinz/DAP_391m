@@ -170,7 +170,7 @@ def optimize_representation(model, image, config, device, verifier=None, freeze_
     r, verifier, z_pos, z_neg = optimize_r_from_latent(target_mu, target_logvar, device, verifier=verifier, freeze_net=freeze_net, num_samples=num_samples, max_steps=max_steps, lr=lr, bce_threshold=bce_threshold, config=config, verbose=True, pbar=pbar)
     return r, verifier, z_pos, z_neg
 
-def optimize_r_in_projected_space(mu_c, logvar_c, mu_others, logvar_others, model, device, config=None, num_samples=256, max_steps=100, lr=0.01, loss_type='bce'):
+def optimize_r_in_projected_space(mu_c, logvar_c, mu_others, logvar_others, model, device, config=None, num_samples=256, max_steps=100, lr=0.01, loss_type='bce', verbose=True):
     """
     Tối ưu vector r trực tiếp trong không gian Projected (đầu ra của Projector) 
     dựa trên N mẫu Positives sinh từ (mu_c, logvar_c) và N mẫu Negatives sinh từ các (mu, logvar) khác.
@@ -183,10 +183,17 @@ def optimize_r_in_projected_space(mu_c, logvar_c, mu_others, logvar_others, mode
     
     latent_dim = mu_c.size(1)
     
-    # 1. Sinh mẫu Positive Z
-    sigma_c = torch.exp(0.5 * logvar_c)
+    # 1. Sinh mẫu Positive Z (từ mu_c)
+    if mu_c.dim() == 1:
+        mu_c = mu_c.unsqueeze(0)
+        logvar_c = logvar_c.unsqueeze(0)
+        
+    idx_pos = torch.randint(0, len(mu_c), (num_samples,))
+    mu_pos_batch = mu_c[idx_pos]
+    logvar_pos_batch = logvar_c[idx_pos]
+    sigma_pos_batch = torch.exp(0.5 * logvar_pos_batch)
     eps_pos = torch.randn(num_samples, latent_dim, device=device)
-    z_pos = mu_c + pos_temp * sigma_c * eps_pos
+    z_pos = mu_pos_batch + pos_temp * sigma_pos_batch * eps_pos
     
     # 2. Sinh mẫu Negative Z (từ mu_others)
     if mu_others is not None and len(mu_others) > 0:
@@ -219,7 +226,9 @@ def optimize_r_in_projected_space(mu_c, logvar_c, mu_others, logvar_others, mode
         y_pos = torch.ones(num_samples, 1, device=device)
         y_neg = torch.zeros(num_samples, 1, device=device)
         
-    for step in range(max_steps):
+    from tqdm import tqdm
+    pbar = tqdm(range(max_steps), leave=False, desc="Finding r")
+    for step in pbar:
         optimizer.zero_grad()
         
         # Đảm bảo r nằm trên hypersphere
@@ -245,8 +254,14 @@ def optimize_r_in_projected_space(mu_c, logvar_c, mu_others, logvar_others, mode
             # Fallback (Contrastive basic)
             loss = ((1.0 - sim_pos)**2).mean() + (sim_neg**2).mean()
             
+        # Tính Accuracy (Pairwise: bao nhiêu % v_pos gần r hơn v_neg)
+        acc = (sim_pos > sim_neg).float().mean().item() * 100.0
+            
         loss.backward()
         optimizer.step()
+        pbar.set_postfix({"Loss": f"{loss.item():.4f}", "Acc": f"{acc:.1f}%"})
+        
+
         
     # Trả về r chuẩn hóa cuối cùng
     r_final = torch.nn.functional.normalize(r.detach(), p=2, dim=1)

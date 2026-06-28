@@ -99,189 +99,6 @@ def load_models(config, device, logger, checkpoint_path=None):
     palm_model.eval()
     return palm_model
 
-def build_gallery(palm_model, dataloader, device, logger, config):
-    """
-    Trích xuất mu, logvar từ tập Train. 
-    Tối ưu r trong không gian Projected Vector.
-    """
-    logger.info("Building enrollment database (Gallery) from Train set...")
-    db_mu = []
-    db_logvar = []
-    db_labels = []
-    
-    palm_model.eval()
-    with torch.no_grad():
-        for images, labels in tqdm(dataloader, desc="Extracting Train Features"):
-            images = images.to(device)
-            outputs = palm_model(images, decode=False)
-            db_mu.append(outputs['mu'].cpu())
-            db_logvar.append(outputs['logvar'].cpu())
-            db_labels.append(labels.cpu())
-            
-    db_mu = torch.cat(db_mu, dim=0).to(device)
-    db_logvar = torch.cat(db_logvar, dim=0).to(device)
-    db_labels = torch.cat(db_labels, dim=0).to(device)
-    
-    unique_labels = torch.unique(db_labels)
-    gallery = {}
-    
-    loss_type = config.get('testing', {}).get('gallery_loss', 'bce')
-    num_samples = config.get('testing', {}).get('gallery_samples', 256)
-    
-    logger.info(f"Optimizing R using {loss_type.upper()} loss...")
-    
-    for label in tqdm(unique_labels, desc="Optimizing Gallery R"):
-        idx = (db_labels == label).nonzero(as_tuple=True)[0]
-        idx_others = (db_labels != label).nonzero(as_tuple=True)[0]
-        
-        # Lấy trung bình mu_c, logvar_c của person
-        mu_c = db_mu[idx].mean(dim=0).unsqueeze(0)
-        logvar_c = db_logvar[idx].mean(dim=0).unsqueeze(0)
-        
-        mu_others = db_mu[idx_others]
-        logvar_others = db_logvar[idx_others]
-        
-        r_c = optimize_r_in_projected_space(
-            mu_c, logvar_c, mu_others, logvar_others, 
-            model=palm_model, device=device, config=config, 
-            num_samples=num_samples, loss_type=loss_type
-        )
-        
-        gallery[label.item()] = r_c
-        
-    logger.info(f"Database built with {len(gallery)} unique identities.")
-    return gallery
-
-def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer):
-    """
-    Chấm công 2 bước: Tính Cosine Similarity, check Max Uncertainty.
-    """
-    logger.info("Starting Probe inference...")
-    
-    threshold = config.get('testing', {}).get('verify_threshold', 0.5)
-    margin = config.get('testing', {}).get('margin', 0.1)
-    u_max = config.get('testing', {}).get('max_uncertainty', 2.0)
-    use_uncertainty = config.get('testing', {}).get('use_uncertainty', True)
-    
-    gallery_labels = list(gallery.keys())
-    gallery_rs = torch.stack([gallery[k] for k in gallery_labels]).to(device) # (Num_IDs, Proj_Dim)
-    
-    total_queries = 0
-    correct_accepts = 0
-    false_accepts = 0
-    false_rejects = 0
-    true_rejects = 0
-    
-    y_true = []
-    y_scores = []
-    
-    palm_model.eval()
-    with torch.no_grad():
-        for images, labels in tqdm(query_loader, desc="Inference"):
-            images = images.to(device)
-            labels = labels.tolist()
-            
-            outputs = palm_model(images, decode=False)
-            mu_q_batch = outputs['mu']
-            logvar_q_batch = outputs['logvar']
-            
-            # P_probe (Deterministic Projection)
-            p_probe_batch = palm_model.projector(mu_q_batch)
-            p_probe_batch = torch.nn.functional.normalize(p_probe_batch, p=2, dim=1)
-            
-            for i in range(images.size(0)):
-                total_queries += 1
-                logvar_q = logvar_q_batch[i]
-                p_probe = p_probe_batch[i:i+1] # (1, Proj_Dim)
-                true_label = labels[i]
-                
-                # Tính Uncertainty
-                sigma_q = torch.exp(0.5 * logvar_q)
-                uncertainty = sigma_q.mean().item()
-                
-                decision = "REJECT"
-                reason = ""
-                predicted_label = -1
-                best_score = 0.0
-                
-                # 1. Đo độ tương đồng Cosine
-                sim_scores = torch.mm(p_probe, gallery_rs.t()).squeeze(0) # (Num_IDs,)
-                topk_scores, topk_idx = torch.topk(sim_scores, k=min(2, len(gallery_labels)))
-                
-                best_score = topk_scores[0].item()
-                predicted_label = gallery_labels[topk_idx[0].item()]
-                top2_score = topk_scores[1].item() if len(topk_scores) > 1 else -1.0
-                
-                # Tính Metrics EER (Chỉ lấy điểm số cao nhất thuộc class tương ứng nếu có)
-                if true_label in gallery_labels:
-                    idx_true = gallery_labels.index(true_label)
-                    score_true = sim_scores[idx_true].item()
-                    y_true.append(1)
-                    y_scores.append(score_true)
-                    
-                    # Thêm 1 mẫu negative (người khác có điểm cao nhất)
-                    idx_false = topk_idx[0].item() if topk_idx[0].item() != idx_true else (topk_idx[1].item() if len(topk_idx)>1 else idx_true)
-                    if idx_false != idx_true:
-                        y_true.append(0)
-                        y_scores.append(sim_scores[idx_false].item())
-                else:
-                    y_true.append(0)
-                    y_scores.append(best_score)
-                
-                # 2. Đưa ra Quyết định (Decision Logic)
-                if best_score > threshold:
-                    if (best_score - top2_score) > margin:
-                        if use_uncertainty and uncertainty > u_max:
-                            reason = "High Uncertainty"
-                        else:
-                            decision = "ACCEPT"
-                            reason = "Passed"
-                    else:
-                        reason = "Margin too small"
-                else:
-                    reason = "Score below threshold"
-                    predicted_label = -1
-                        
-                is_correct = (decision == "ACCEPT" and predicted_label == true_label)
-                
-                if true_label in gallery_labels:
-                    if decision == "ACCEPT":
-                        if predicted_label == true_label:
-                            correct_accepts += 1
-                        else:
-                            false_accepts += 1
-                    else:
-                        false_rejects += 1
-                else:
-                    if decision == "ACCEPT":
-                        false_accepts += 1
-                    else:
-                        true_rejects += 1
-                
-                if csv_writer:
-                    csv_writer.writerow([
-                        total_queries, true_label, predicted_label,
-                        f"{best_score:.4f}", f"{uncertainty:.4f}",
-                        decision, reason, is_correct
-                    ])
-                
-    logger.info("=== Inference Summary ===")
-    logger.info(f"Total Queries: {total_queries}")
-    logger.info(f"Correct Accepts (TAR): {correct_accepts}")
-    logger.info(f"False Accepts (FAR): {false_accepts}")
-    logger.info(f"False Rejects (FRR): {false_rejects}")
-    logger.info(f"True Rejects (Unknowns): {true_rejects}")
-    
-    accuracy = (correct_accepts / total_queries) * 100 if total_queries > 0 else 0
-    logger.info(f"Rank-1 Accuracy: {accuracy:.2f}%")
-    
-    if len(y_true) > 0 and len(set(y_true)) > 1:
-        fpr, tpr, thresholds_roc = roc_curve(y_true, y_scores)
-        eer = brentq(lambda x: 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
-        logger.info(f"Equal Error Rate (EER): {eer*100:.2f}%")
-    else:
-        logger.info("Equal Error Rate (EER): N/A (Not enough classes)")
-
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig):
     config = OmegaConf.to_container(cfg, resolve=True)
@@ -335,6 +152,13 @@ def main(cfg: DictConfig):
     batch_size = config.get('testing', {}).get('batch_size', 32)
     num_workers = config.get('testing', {}).get('num_workers', 2)
     
+    logger.info("=== Dataset Configuration ===")
+    logger.info(f"Dataset Name: {dataset_name}")
+    logger.info(f"Data Directory: {data_dir}")
+    logger.info(f"Batch Size: {batch_size}")
+    logger.info(f"Image Size: {config.get('dataset', {}).get('image_size', 'Unknown')}")
+    logger.info("==============================")
+    
     if dataset_name.upper() == 'POLYU':
         dataset_name = 'PalmPrintDataset'
     elif dataset_name.upper() == 'MNIST':
@@ -357,7 +181,20 @@ def main(cfg: DictConfig):
     csv_writer = csv.writer(csv_file)
     csv_writer.writerow(['Query_ID', 'True_Label', 'Predicted_Label', 'Best_Score', 'Uncertainty', 'Decision', 'Reason', 'Is_Correct'])
     
-    gallery = build_gallery(palm_model, gallery_loader, device, logger, config)
+    from tools.build_gallery import build_gallery
+    from tools.evaluate_probe import evaluate_probe
+    
+    use_saved = config.get('testing', {}).get('use_saved_gallery', False)
+    gallery_save_path = os.path.join(output_dir, 'gallery.pt')
+    
+    if use_saved and os.path.isfile(gallery_save_path):
+        logger.info(f"Loading saved gallery from {gallery_save_path}")
+        gallery = torch.load(gallery_save_path, map_location=device)
+    else:
+        gallery = build_gallery(palm_model, gallery_loader, device, logger, config, output_dir=output_dir)
+        torch.save(gallery, gallery_save_path)
+        logger.info(f"Gallery saved successfully to {gallery_save_path}")
+        
     evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer)
     
     csv_file.close()
