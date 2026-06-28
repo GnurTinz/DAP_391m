@@ -152,7 +152,7 @@ class UNetPalmModel(BaseModel):
         eps = torch.randn_like(std)
         return mu + eps * std * temperature
 
-    def forward(self, x, decode=False, temperature=1.0, sample_mode='stochastic'):
+    def forward(self, x, decode=False, temperature=1.0, sample_mode='stochastic', global_step=None, switch_to_z_step=None):
         # 1. Trích xuất Latent distribution từ mạng riêng (Posterior/Prior Network)
         mu, logvar = self.latent_encoder(x)
         
@@ -162,11 +162,17 @@ class UNetPalmModel(BaseModel):
 
         z = self.reparameterize(mu, logvar, temperature, mode=sample_mode)
         
+        # Curriculum Learning: Chọn input cho Projector dựa trên global_step
+        if global_step is not None and switch_to_z_step is not None:
+            proj_input = z if global_step >= switch_to_z_step else mu
+        else:
+            proj_input = mu # Mặc định dùng mu nếu không truyền step
+
         out = {
             'mu': mu,
             'logvar': logvar,
             'z': z,
-            'proj': self.projector(z)
+            'proj': self.projector(proj_input)
         }
         
         if decode and self.use_decoder:

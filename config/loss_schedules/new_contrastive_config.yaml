@@ -1,0 +1,30 @@
+# Chiến lược: Học biểu diễn không gian (Metric Learning) TRƯỚC, học tái tạo và phân bố SAU.
+# - Bước 0 -> 1000: Chỉ học Contrastive (Ép các cụm tản ra xa nhau). lambda_rec = 0, beta_kl = 0.
+# - Bước 1000 -> 2000: Bắt đầu học khôi phục ảnh (Reconstruction).
+# - Bước 2000 -> 3000: Thêm tính liên tục cho phân bố (KL Divergence).
+
+# Bước nhảy để chuyển từ Projector(mu) sang Projector(z). Bật Latent Augmentation để chống overfit
+switch_to_z_step: 3000
+
+
+lambda_con:
+  type: "constant"
+  value: 1.0          # Ép ngay từ đầu để định hình không gian
+
+lambda_rec:
+  type: "linear_step"
+  start_step: 2400
+  end_step: 7200
+  start_value: 0.0
+  end_value: 0.15
+
+beta_kl:
+  type: "linear_step"
+  start_step: 0
+  end_step: 10000
+  start_value: 0.001
+  end_value: 0.05
+
+lambda_unc:
+  type: "constant"
+  value: 0.1

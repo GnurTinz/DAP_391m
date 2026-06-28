@@ -70,8 +70,14 @@ class GenerativeLightningModule(pl.LightningModule):
         mode = sampling_cfg.get('mode', 'stochastic')
         temperature = sampling_cfg.get('temperature', 1.0)
 
+        # Cấu hình Curriculum Learning
+        switch_to_z_step = self.config.get('loss_schedules', {}).get('switch_to_z_step', None)
+
         # Đổ cấu hình xuống model
-        if 'sample_mode' in self.model.forward.__code__.co_varnames:
+        if 'global_step' in self.model.forward.__code__.co_varnames:
+            out = self.model(x, decode=decode, temperature=temperature, sample_mode=mode, 
+                             global_step=self.global_step, switch_to_z_step=switch_to_z_step)
+        elif 'sample_mode' in self.model.forward.__code__.co_varnames:
             out = self.model(x, decode=decode, temperature=temperature, sample_mode=mode)
         elif 'temperature' in self.model.forward.__code__.co_varnames:
             out = self.model(x, decode=decode, temperature=temperature)
