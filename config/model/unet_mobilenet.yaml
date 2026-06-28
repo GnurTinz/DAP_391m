@@ -1,0 +1,19 @@
+type: "unet"
+encoder:
+  backbone: "mobilenet_v2" # Sử dụng kiến trúc MobileNetV2 siêu nhẹ từ torchvision
+  pretrained: true
+  in_channels: 3
+  latent_dim: 128
+decoder:
+  use_decoder: true
+  skip_dropout: 0.5
+  image_size: ${dataset.image_size} # Interpolate from dataset config
+  unet_channels: [64, 128, 256, 512] # Default U-Net channels
+verifier:
+  hidden_dims: [256, 128]
+projector:
+  use_mlp: true
+  hidden_dims: [256, 256] 
+  activation: "LeakyReLU"
+  proj_dim: 128
+  use_bn: true
