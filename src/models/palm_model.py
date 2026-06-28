@@ -72,7 +72,7 @@ class ProbabilisticPalmModel(BaseModel):
             'mu': mu,
             'logvar': logvar,
             'z': z,
-            'proj': self.projector(mu) # Đi qua Light MLP để phục vụ Contrastive Loss
+            'proj': self.projector(z) # Đi qua Light MLP để phục vụ Contrastive Loss
         }
         
         if decode and self.use_decoder:
