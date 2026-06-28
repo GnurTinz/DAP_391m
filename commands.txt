@@ -1,24 +1,74 @@
-# TỔNG HỢP CÁC CÂU LỆNH TRAINING CHO DỰ ÁN PALMPRINT
+# ========================================================================================
+# TỔNG HỢP TOÀN TẬP CÁC TỔ HỢP HUẤN LUYỆN (TRAINING COMMANDS) CHO DỰ ÁN PALMPRINT
+# ========================================================================================
+# Cấu trúc chung của lệnh:
+# python tools/train_lightning.py model=... dataset=... losses=... loss_schedules=... training=...
+# ========================================================================================
 
-# 1. BỘ TỨ SOTA (State-of-The-Art) - KIẾN TRÚC MẠNH NHẤT
-# Dùng ResNet18 pretrained siêu mạnh, tối ưu ArcFace, có dùng Sampler ép Negative/Positive
-python tools/train_lightning.py model=unet_resnet losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+# ----------------------------------------------------------------------------------------
+# PHẦN 1: TỔ HỢP ĐẠT ĐỘ CHÍNH XÁC SOTA (DÀNH CHO ĐÁNH GIÁ CHÍNH THỨC TRÊN SERVER)
+# Môi trường: ResNet18 + ArcFace + Contrastive First Schedule
+# ----------------------------------------------------------------------------------------
+# 1. Train trên dataset IITD (Chia theo tỷ lệ ngẫu nhiên 80/20)
+python tools/train_lightning.py model=unet_resnet dataset=iitd_ratio losses=arcface loss_schedules=contrastive_first training=arcface
 
-# 2. EDGE-AI LITE (NHẸ, NHANH, ĐÁP ỨNG THỜI GIAN THỰC)
-# Dùng PalmNet khởi tạo Gabor, cực nhẹ, hội tụ đường vân siêu tốc
-python tools/train_lightning.py model=unet_palmnet_gabor losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+# 2. Train trên dataset IITD (Chia theo tay Trái/Phải để kiểm tra tính tổng quát)
+python tools/train_lightning.py model=unet_resnet dataset=iitd_hand losses=arcface loss_schedules=contrastive_first training=arcface
 
-# 3. MẠNG CCNET (KIỂM THỬ THUẬT TOÁN)
-# Thử nghiệm Backbone CCNet
-python tools/train_lightning.py model=unet_ccnet losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+# 3. Train trên dataset Tongji (Chia theo tỷ lệ hỗn hợp Mixed)
+python tools/train_lightning.py model=unet_resnet dataset=tongji_mixed losses=arcface loss_schedules=contrastive_first training=arcface
 
-# 4. CHUẨN HÓA CƠ BẢN (KHÔNG GABOR)
-# Dùng PalmNet khởi tạo Kaiming/Xavier ngẫu nhiên
-python tools/train_lightning.py model=unet_palmnet losses=arcface loss_schedules=contrastive_first training=arcface dataset=own_original dataset.batch_size=32
+# 4. Train trên dataset Tongji (Chia theo Session 1/2 để kiểm tra chống trôi dạt theo thời gian)
+python tools/train_lightning.py model=unet_resnet dataset=tongji_session losses=arcface loss_schedules=contrastive_first training=arcface
 
-# 5. DÀNH CHO BÀI TOÁN TOY DATASET (MNIST) / DEBUG PIPELINE
-# Train U-Net CNN cơ bản với hàm loss tái tạo chuẩn, không dùng ArcFace
-python tools/train_lightning.py model=unet losses=default loss_schedules=warmup training=default dataset=mnist dataset.batch_size=64
+# 5. Train trên dataset thu thập riêng (Own Original)
+python tools/train_lightning.py model=unet_resnet dataset=own_original losses=arcface loss_schedules=contrastive_first training=arcface
 
-# --- GHI CHÚ ---
-# Các lệnh trên chạy từ thư mục gốc: e:\palm
+# ----------------------------------------------------------------------------------------
+# PHẦN 2: TỔ HỢP EDGE-AI / REAL-TIME (SIÊU NHẸ, TRIỂN KHAI CHO THIẾT BỊ NHÚNG)
+# Môi trường: PalmNet (Gabor init) + ArcFace
+# ----------------------------------------------------------------------------------------
+# 6. Triển khai PalmNet nhẹ trên dataset IITD
+python tools/train_lightning.py model=unet_palmnet_gabor dataset=iitd_ratio losses=arcface loss_schedules=contrastive_first training=arcface
+
+# 7. Triển khai PalmNet nhẹ trên dataset Tongji (Mixed)
+python tools/train_lightning.py model=unet_palmnet_gabor dataset=tongji_mixed losses=arcface loss_schedules=contrastive_first training=arcface
+
+# 8. Ablation Study: PalmNet CƠ BẢN (KHÔNG dùng Gabor) để chứng minh hiệu quả của Gabor
+python tools/train_lightning.py model=unet_palmnet dataset=iitd_ratio losses=arcface loss_schedules=contrastive_first training=arcface
+
+# ----------------------------------------------------------------------------------------
+# PHẦN 3: TỔ HỢP KIỂM THỬ THUẬT TOÁN ĐẶC BIỆT / RESEARCH
+# ----------------------------------------------------------------------------------------
+# 9. Đánh giá tính hiệu quả của CCNet (Global Attention Context) trên IITD
+python tools/train_lightning.py model=unet_ccnet dataset=iitd_ratio losses=arcface loss_schedules=contrastive_first training=arcface
+
+# 10. Đánh giá các hàm Loss Metric Learning khác (Supervised Contrastive Loss thay vì ArcFace)
+python tools/train_lightning.py model=unet_resnet dataset=iitd_ratio losses=supcon loss_schedules=contrastive_first training=default
+
+# 11. Đánh giá các hàm Loss Metric Learning khác (InfoNCE Loss)
+python tools/train_lightning.py model=unet_resnet dataset=iitd_ratio losses=infonce loss_schedules=contrastive_first training=default
+
+# 12. Đánh giá các hàm Loss Metric Learning khác (Multi-Similarity Loss)
+python tools/train_lightning.py model=unet_resnet dataset=iitd_ratio losses=ms_loss loss_schedules=contrastive_first training=default
+
+# ----------------------------------------------------------------------------------------
+# PHẦN 4: TỔ HỢP DEBUG & GENERATIVE (ĐẢM BẢO U-NET HOẠT ĐỘNG TỐT)
+# Môi trường: Không dùng ArcFace, chuyên tâm vào việc khôi phục ảnh (Reconstruction)
+# ----------------------------------------------------------------------------------------
+# 13. Dùng tập toy MNIST để test tính đúng đắn của code pipeline
+python tools/train_lightning.py model=unet_mock dataset=mnist losses=default loss_schedules=warmup training=default
+
+# 14. Train mô hình U-Net CNN cơ bản với hàm loss tái tạo tiêu chuẩn trên dữ liệu tự thu thập
+python tools/train_lightning.py model=unet dataset=own_original losses=default loss_schedules=warmup training=default
+
+# 15. Khởi chạy kiến trúc Probabilistic cũ (Legacy) để so sánh
+python tools/train_lightning.py model=probabilistic_resnet50 dataset=own_original losses=default loss_schedules=warmup training=default
+
+# ========================================================================================
+# CÁC THAM SỐ GHI ĐÈ THƯỜNG DÙNG (OVERRIDE TỪ DÒNG LỆNH):
+# Thêm vào cuối các lệnh trên:
+# - Thay đổi batch size:  dataset.batch_size=32
+# - Thay đổi kích cỡ ảnh: dataset.image_size=[150,150]
+# - Giảm số epoch:        training.trainer.max_epochs=50
+# ========================================================================================
