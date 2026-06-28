@@ -11,3 +11,4 @@ verifier:
   hidden_dims: [512, 256]
 projector:
   proj_dim: 128
+  use_bn: true

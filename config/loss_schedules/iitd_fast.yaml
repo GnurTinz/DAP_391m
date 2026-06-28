@@ -1,0 +1,27 @@
+# Chiến lược: Học cực nhanh dành riêng cho dataset IITD (Dữ liệu sạch, dễ hội tụ).
+# IITD hội tụ rất nhanh so với Tongji, nên ta rút ngắn các giai đoạn lại để tiết kiệm số Epochs.
+# - Bước 0 -> 200: Ép không gian Contrastive (ArcFace) để tạo cụm danh tính.
+# - Bước 200 -> 800: Bật ngay bộ khôi phục ảnh (Reconstruction) để giữ cấu trúc vật lý.
+# - Bước 800 -> 1500: Thêm KL Divergence rất nhẹ để chống overfit.
+
+lambda_con:
+  type: "constant"
+  value: 0.9          # Ép ngay từ đầu để định hình không gian nhanh chóng
+
+lambda_rec:
+  type: "linear_step"
+  start_step: 200     # Bắt đầu sớm hơn nhiều so với contrastive_first (1000)
+  end_step: 800
+  start_value: 0.0
+  end_value: 1.0
+
+beta_kl:
+  type: "linear_step"
+  start_step: 800     # Bắt đầu sớm hơn (2500 -> 800)
+  end_step: 1500
+  start_value: 0.0
+  end_value: 0.005
+
+lambda_unc:
+  type: "constant"
+  value: 0.0
