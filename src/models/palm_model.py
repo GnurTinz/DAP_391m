@@ -37,6 +37,10 @@ class ProbabilisticPalmModel(BaseModel):
                 layers.append(activation_cls())
                 in_dim = h_dim
             layers.append(nn.Linear(in_dim, proj_dim))
+            # Bổ sung BatchNorm1d trước khi đi vào ArcFace
+            use_bn = config.get('projector', {}).get('use_bn', True)
+            if use_bn:
+                layers.append(nn.BatchNorm1d(proj_dim))
             self.projector = nn.Sequential(*layers)
         else:
             self.projector = nn.Identity()
