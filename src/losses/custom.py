@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Normal, kl_divergence
 import math
 from .base import BaseLoss
 
@@ -14,9 +15,18 @@ class KLDivLoss(BaseLoss):
     KL Divergence between learned distribution and N(0, I).
     """
     def forward(self, mu, logvar):
-        # -0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-        return kld / mu.size(0)
+        
+        # Phân phối học được q(z|x)
+        std = torch.exp(0.5 * logvar)
+        q = Normal(mu, std)
+        
+        # Phân phối chuẩn mục tiêu p(z) = N(0, 1)
+        p = Normal(torch.zeros_like(mu), torch.ones_like(logvar))
+        
+        # KL(q || p)
+        # Sum theo chiều features, sau đó lấy mean theo batch size
+        kld = kl_divergence(q, p).sum(dim=-1).mean()
+        return kld
 
 class UncertaintyLoss(BaseLoss):
     """
