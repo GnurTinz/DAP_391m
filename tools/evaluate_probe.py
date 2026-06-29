@@ -20,7 +20,7 @@ from src.models.palm_model import ProbabilisticPalmModel
 from src.models.unet_model import UNetPalmModel
 from tools.test_pipeline import set_seed, setup_logger, load_models
 
-def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer):
+def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer, use_raw_mu=False):
     """
     Chấm công 2 bước: Tính Cosine Similarity, check Max Uncertainty.
     """
@@ -44,6 +44,9 @@ def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, cs
             gallery_labels_flat.append(k)
             
     gallery_rs = torch.stack(gallery_rs_flat).to(device) # (Total_Templates, Proj_Dim)
+    if use_raw_mu:
+        gallery_rs = torch.nn.functional.normalize(gallery_rs, p=2, dim=1)
+        
     gallery_labels = list(gallery.keys())
     
     total_queries = 0
@@ -57,6 +60,9 @@ def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, cs
     y_scores = []
     
     optimize_probe = config.get('testing', {}).get('optimize_probe', True)
+    if use_raw_mu:
+        optimize_probe = False
+        
     loss_type = config.get('testing', {}).get('gallery_loss', 'bce')
     num_samples = config.get('testing', {}).get('gallery_samples', 256)
     max_steps = config.get('testing', {}).get('gallery_max_steps', 100)
@@ -75,8 +81,11 @@ def evaluate_probe(palm_model, gallery, query_loader, device, logger, config, cs
             logvar_q_batch = outputs['logvar']
             
             if not optimize_probe:
-                p_probe_batch = palm_model.projector(mu_q_batch)
-                p_probe_batch = torch.nn.functional.normalize(p_probe_batch, p=2, dim=1)
+                if use_raw_mu:
+                    p_probe_batch = torch.nn.functional.normalize(mu_q_batch, p=2, dim=1)
+                else:
+                    p_probe_batch = palm_model.projector(mu_q_batch)
+                    p_probe_batch = torch.nn.functional.normalize(p_probe_batch, p=2, dim=1)
                 
         for i in range(images.size(0)):
             total_queries += 1
@@ -228,13 +237,34 @@ def main(cfg: DictConfig):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     palm_model = load_models(config, device, logger, checkpoint_path)
     
-    gallery_save_path = os.path.join(output_dir, 'gallery.pt')
-    if not os.path.isfile(gallery_save_path):
-        logger.error(f"Gallery file not found at {gallery_save_path}! Please run build_gallery.py first.")
-        return
+    use_raw_mu = config.get('testing', {}).get('use_raw_mu', True)
+    
+    if use_raw_mu:
+        features_save_path = os.path.join(output_dir, 'extracted_features.pt')
+        if not os.path.isfile(features_save_path):
+            logger.error(f"Extracted features not found at {features_save_path}! Please run build_gallery.py first.")
+            return
+            
+        logger.info(f"Loading raw MU gallery from {features_save_path}")
+        features = torch.load(features_save_path, map_location=device)
+        db_mu = features['db_mu']
+        db_labels = features['db_labels']
         
-    logger.info(f"Loading gallery from {gallery_save_path}")
-    gallery = torch.load(gallery_save_path, map_location=device)
+        gallery = {}
+        unique_labels = torch.unique(db_labels)
+        max_images = config.get('testing', {}).get('gallery_max_images', 8)
+        for label in unique_labels:
+            idx = (db_labels == label).nonzero(as_tuple=True)[0]
+            limit = min(len(idx), max_images)
+            gallery[label.item()] = db_mu[idx[:limit]]
+    else:
+        gallery_save_path = os.path.join(output_dir, 'gallery.pt')
+        if not os.path.isfile(gallery_save_path):
+            logger.error(f"Gallery file not found at {gallery_save_path}! Please run build_gallery.py first.")
+            return
+            
+        logger.info(f"Loading gallery from {gallery_save_path}")
+        gallery = torch.load(gallery_save_path, map_location=device)
     
     data_dir = config.get('dataset', {}).get('data_dir', 'data/PolyU')
     dataset_name = config.get('dataset', {}).get('name', 'PolyU')
@@ -264,7 +294,7 @@ def main(cfg: DictConfig):
     csv_writer = csv.writer(csv_file)
     csv_writer.writerow(['Query_ID', 'True_Label', 'Predicted_Label', 'Best_Score', 'Uncertainty', 'Decision', 'Reason', 'Is_Correct'])
     
-    evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer)
+    evaluate_probe(palm_model, gallery, query_loader, device, logger, config, csv_writer, use_raw_mu=use_raw_mu)
     
     csv_file.close()
     logger.info("Evaluation finished successfully.")

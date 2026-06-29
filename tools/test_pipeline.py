@@ -147,6 +147,16 @@ def main(cfg: DictConfig):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     palm_model = load_models(config, device, logger, checkpoint_path)
     
+    logger.info("=== Model Components & Parameters ===")
+    total_params = sum(p.numel() for p in palm_model.parameters())
+    trainable_params = sum(p.numel() for p in palm_model.parameters() if p.requires_grad)
+    for name, module in palm_model.named_children():
+        num_params = sum(p.numel() for p in module.parameters())
+        if num_params > 0:
+            logger.info(f"- {name}: {num_params:,} parameters")
+    logger.info(f"Total Parameters: {total_params:,} ({trainable_params:,} trainable)")
+    logger.info("=====================================")
+    
     data_dir = config.get('dataset', {}).get('data_dir', 'data/PolyU')
     dataset_name = config.get('dataset', {}).get('name', 'PolyU')
     batch_size = config.get('testing', {}).get('batch_size', 32)
