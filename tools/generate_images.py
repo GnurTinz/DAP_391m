@@ -37,9 +37,32 @@ def main(cfg: DictConfig):
     output_dir = os.path.join(version_dir, 'generated')
     os.makedirs(output_dir, exist_ok=True)
     
+    # Tự động nạp cấu hình kiến trúc từ config_backup.yaml nếu có
+    backup_path = os.path.join(version_dir, "config_backup.yaml")
+    if os.path.exists(backup_path):
+        print(f"Tìm thấy file {backup_path}, đang nạp để đồng bộ kiến trúc model...")
+        import yaml
+        with open(backup_path, 'r', encoding='utf-8') as f:
+            backup_config = yaml.safe_load(f)
+            
+        if 'model' in backup_config:
+            config['model'] = backup_config['model']
+            
+        if 'dataset' in backup_config and 'image_size' in backup_config['dataset']:
+            if 'dataset' not in config:
+                config['dataset'] = {}
+            config['dataset']['image_size'] = backup_config['dataset']['image_size']
+            
     output_path = config.get('output', "")
     if not output_path or output_path == "logs/results":
         output_path = os.path.join(output_dir, f"{mode}.png")
+    else:
+        # Nếu người dùng chỉ truyền tên file (không có đường dẫn), đưa vào thư mục output_dir
+        if not os.path.dirname(output_path):
+            output_path = os.path.join(output_dir, output_path)
+            # Đảm bảo có đuôi file ảnh
+            if not any(output_path.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg']):
+                output_path += '.png'
         
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Sử dụng device: {device}")

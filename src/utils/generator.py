@@ -198,28 +198,8 @@ class ImageGenerator:
                     z_pos = mu + tau * eps * std
                     z_list.append(z_pos)
                 else:
-                    # Cách C: Xoay vector tiềm ẩn z (Latent Rotation / Spherical Interpolation)
-                    # Góc xoay theta trải từ 45 độ (pi/4) đến 180 độ (pi) tuỳ theo i
-                    idx = i - (num_images // 2)
-                    max_idx = num_images - (num_images // 2)
-                    theta = (math.pi / 4) + (math.pi * 3 / 4) * (idx / max_idx)
-                    
-                    # Tìm hướng ngẫu nhiên trực giao với mu để tạo mặt phẳng xoay
-                    v = torch.randn_like(mu)
-                    mu_norm = torch.norm(mu, p=2, dim=1, keepdim=True) + 1e-8
-                    mu_unit = mu / mu_norm
-                    
-                    v_proj = torch.sum(v * mu_unit, dim=1, keepdim=True) * mu_unit
-                    v_ortho = v - v_proj
-                    v_ortho_unit = v_ortho / (torch.norm(v_ortho, p=2, dim=1, keepdim=True) + 1e-8)
-                    
-                    # Xoay mu trên mặt phẳng 2D (mu_unit, v_ortho_unit)
-                    z_rot = mu_norm * (mu_unit * math.cos(theta) + v_ortho_unit * math.sin(theta))
-                    
-                    # Thêm chút nhiễu bất định để ảnh sinh ra trông thực tế
-                    eps = torch.randn_like(std)
-                    z_neg = z_rot + eps * std
-                        
+                    # Lấy mẫu ngẫu nhiên từ N(0, 6I) cho các mẫu khác nhau
+                    z_neg = -mu +  12 * torch.randn_like(std) * std
                     z_list.append(z_neg)
                     
             z_batch = torch.cat(z_list, dim=0)
