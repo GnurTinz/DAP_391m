@@ -81,3 +81,89 @@ python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=Tr
 
 # Attendance:
 python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_latent_decoder.pt"
+
+
+################################################################################
+# PHẦN C: ĐÁNH GIÁ TOÀN DIỆN (tools/eval_attendance.py)
+#
+# Script thực hiện toàn bộ pipeline đánh giá tự động:
+#   1. Extract mu / proj / logvar → cache vào feats_val.pt, feats_test.pt
+#   2. Build gallery theo mode → cache vào gallery.pt
+#   3. Tính EER + Rank-1 Accuracy → lưu results.json
+#   4. Vẽ Score Distribution (Genuine vs Impostor)
+#   5. Vẽ t-SNE (Projected Space và Mu Space)
+#
+# Kết quả lưu vào: <version_dir>/eval/<run_name>/
+#   Ví dụ: logs/Unet_Palmnet/version_2/eval/mode0_baseline_real/
+#
+# QUAN TRỌNG:
+#   - Lần đầu chạy mỗi checkpoint sẽ extract và cache features (chậm).
+#   - Các lần sau chạy mode/neg_strategy khác sẽ dùng lại cache → rất nhanh.
+#   - Thêm eval.force_reextract=true để extract lại từ đầu.
+################################################################################
+
+# Cài đặt biến (PowerShell) — thay path cho đúng checkpoint của bạn
+$CKPT    = "logs\Unet_Palmnet\version_2\checkpoints\last.ckpt"
+$DATASET = "iitd_hand"
+
+# ==============================================================================
+# C0. BASELINE — 1-NN trực tiếp trên Projected Space (không tối ưu r)
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET +eval=eval eval.mode=0
+
+# ==============================================================================
+# C1. OPTIMIZE PROJECTED SPACE — Hard Negative Mining (real samples)
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+    +eval=eval eval.mode=1 eval.neg_strategy=real
+
+# ==============================================================================
+# C2. OPTIMIZE PROJECTED SPACE — Spherical Rotation (random angle 45°–180°)
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+    +eval=eval eval.mode=1 eval.neg_strategy=spherical
+
+# ==============================================================================
+# C3. OPTIMIZE PROJECTED SPACE — Decoder Loop (sinh ảnh → re-encode)
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+    +eval=eval eval.mode=1 eval.neg_strategy=decoder_loop
+
+# ==============================================================================
+# C4. OPTIMIZE LATENT SPACE — Hard Negative Mining (real samples)
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+    +eval=eval eval.mode=2 eval.neg_strategy=real
+
+# ==============================================================================
+# C5. OPTIMIZE LATENT SPACE — Spherical Rotation
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+    +eval=eval eval.mode=2 eval.neg_strategy=spherical
+
+# ==============================================================================
+# C6. OPTIMIZE LATENT SPACE — Decoder Loop
+# ==============================================================================
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+    +eval=eval eval.mode=2 eval.neg_strategy=decoder_loop
+
+# ==============================================================================
+# THAM KHẢO THÊM — Override thêm tham số nếu cần
+# ==============================================================================
+
+# Force extract lại toàn bộ (bỏ qua cache):
+#   eval.force_reextract=true
+
+# Tăng số bước optimize (mặc định 200):
+#   eval.max_steps_opt=400
+
+# Tăng số mẫu negative (mặc định 512):
+#   eval.num_samples_opt=1024
+
+# Đổi split gallery/probe (mặc định: gallery=val, probe=test):
+#   eval.gallery_split=train eval.probe_split=val
+
+# Ví dụ kết hợp nhiều override:
+# python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET `
+#     +eval=eval eval.mode=1 eval.neg_strategy=real `
+#     eval.max_steps_opt=400 eval.force_reextract=true

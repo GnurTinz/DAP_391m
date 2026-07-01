@@ -1,0 +1,13 @@
+2026-07-02 01:51:19,150 [INFO] [Eval] mode=1 | neg_strategy=decoder_loop | device=cpu
+2026-07-02 01:51:19,150 [INFO] Reading model config from E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\config_backup.yaml
+2026-07-02 01:51:20,687 [INFO] Loaded checkpoint: E:\palm\logs\UnetPalmModel_Resnet18_version_15\version_15\checkpoints\last.ckpt
+2026-07-02 01:51:20,691 [INFO] Frozen 35 BatchNorm layer(s) into eval mode.
+2026-07-02 01:51:20,741 [INFO] Output directory: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode1_opt_proj_decoder_loop
+2026-07-02 01:51:20,742 [INFO] Building dataloader: gallery_split='train', probe_split='test'
+2026-07-02 01:51:20,794 [INFO] --- STEP 1: Extracting features ---
+2026-07-02 01:52:30,503 [INFO] Saved feature cache: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode1_opt_proj_decoder_loop\feats_train.pt
+2026-07-02 01:53:28,497 [INFO] Saved feature cache: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode1_opt_proj_decoder_loop\feats_test.pt
+2026-07-02 01:53:28,512 [INFO] Gallery: 1301 samples, 230 identities
+2026-07-02 01:53:28,513 [INFO] Probe  : 1300 samples, 230 identities
+2026-07-02 01:53:28,513 [INFO] --- STEP 2: Building gallery ---
+2026-07-02 01:53:28,516 [INFO] Building gallery: Mode=1, neg_strategy='decoder_loop', 230 identities

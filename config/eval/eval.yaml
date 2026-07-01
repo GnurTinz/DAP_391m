@@ -1,0 +1,41 @@
+# ============================================================
+# eval/eval.yaml — Config group cho tools/eval_attendance.py
+# Hydra config group: dùng +eval=eval để load file này
+# ============================================================
+
+# Chế độ chạy:
+#   0 = Baseline (1-NN trực tiếp trên proj, không tối ưu)
+#   1 = Optimize r trong Projected Space
+#   2 = Optimize r trong Latent Space
+mode: 0
+
+# Chiến lược lấy mẫu âm bản (chỉ có hiệu lực khi mode = 1 hoặc 2):
+#   real          → dùng mu của người khác trong dataset (hard negatives thật)
+#   spherical     → xoay vector mu ngẫu nhiên 45°–180°
+#   decoder_loop  → sinh ảnh qua decoder rồi re-encode (cần model có decoder)
+neg_strategy: real
+
+# ── Cài đặt tối ưu (mode 1, 2) ───────────────────────────────
+num_samples_opt: 512   # số mẫu positive/negative per optimization step
+max_steps_opt: 200     # số bước tối đa
+lr_opt: 0.01           # learning rate Adam
+
+# ── Decoder-loop temperature (chỉ dùng khi neg_strategy=decoder_loop) ───────
+decoder_T_min: 4.0
+decoder_T_max: 10.0
+
+# ── Dataset splits ────────────────────────────────────────────
+gallery_split: train  # split dùng để build gallery (đăng ký)
+probe_split: test     # split dùng để probe (điểm danh)
+
+# ── Output ────────────────────────────────────────────────────
+# Để trống → tự động lưu vào version_dir/eval/<run_name>/
+output_dir: ""
+
+# Bỏ qua cache và extract lại toàn bộ (True/False)
+force_reextract: false
+
+# ── t-SNE visualization ───────────────────────────────────────
+tsne_top_k: 20        # số identity hiển thị màu trong t-SNE
+tsne_perplexity: 30
+batch_size: 32

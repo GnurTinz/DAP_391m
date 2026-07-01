@@ -1,0 +1,35 @@
+2026-07-02 00:08:25,670 [INFO] [Eval] mode=0 | neg_strategy=real | device=cpu
+2026-07-02 00:08:25,672 [INFO] Reading model config from E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\config_backup.yaml
+2026-07-02 00:08:27,654 [INFO] Loaded checkpoint: E:\palm\logs\UnetPalmModel_Resnet18_version_15\version_15\checkpoints\last.ckpt
+2026-07-02 00:08:27,661 [INFO] Frozen 35 BatchNorm layer(s) into eval mode.
+2026-07-02 00:08:27,712 [INFO] Output directory: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real
+2026-07-02 00:08:27,712 [INFO] Building dataloader: gallery_split='val', probe_split='test'
+2026-07-02 00:08:28,469 [INFO] --- STEP 1: Extracting features ---
+2026-07-02 00:15:05,131 [INFO] Saved feature cache: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\feats_val.pt
+2026-07-02 00:22:00,173 [INFO] Saved feature cache: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\feats_test.pt
+2026-07-02 00:22:00,208 [INFO] Gallery: 21977 samples, 231 identities
+2026-07-02 00:22:00,210 [INFO] Probe  : 21977 samples, 231 identities
+2026-07-02 00:22:00,210 [INFO] --- STEP 2: Building gallery ---
+2026-07-02 00:22:00,214 [INFO] Building gallery: Mode=0, neg_strategy='real', 231 identities
+2026-07-02 00:22:02,178 [INFO] Saved gallery cache: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\gallery.pt
+2026-07-02 00:22:02,182 [INFO] --- STEP 3: Evaluating ---
+2026-07-02 00:22:09,287 [INFO] ============================================================
+2026-07-02 00:22:09,287 [INFO]   Rank-1 Accuracy : 100.00%
+2026-07-02 00:22:09,288 [INFO]   EER             : 0.00%  (threshold=1.0000)
+2026-07-02 00:22:09,288 [INFO]   Mean Genuine    : 1.0000
+2026-07-02 00:22:09,288 [INFO]   Mean Impostor   : 0.0805
+2026-07-02 00:22:09,288 [INFO]   Probe count     : 21977
+2026-07-02 00:22:09,288 [INFO]   Gallery IDs     : 231
+2026-07-02 00:22:09,288 [INFO] ============================================================
+2026-07-02 00:22:20,050 [INFO] Saved results: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\results.json
+2026-07-02 00:22:20,050 [INFO] --- STEP 4: Visualizing score distribution ---
+2026-07-02 00:22:35,193 [INFO] Saved score distribution: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\score_distribution.png
+2026-07-02 00:22:35,193 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-02 00:22:35,199 [INFO] Running t-SNE (43954 points, perplexity=30)...
+2026-07-02 00:27:46,918 [INFO] Saved t-SNE plot: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\tsne_proj.png
+2026-07-02 00:27:46,925 [INFO] Running t-SNE (43954 points, perplexity=30)...
+2026-07-02 00:32:28,700 [INFO] Saved t-SNE plot: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real\tsne_mu.png
+2026-07-02 00:32:28,702 [INFO] 
+2026-07-02 00:32:28,704 [INFO] All outputs saved to: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode0_baseline_real
+2026-07-02 00:32:28,704 [INFO] Log file: tasks\eval_mode0_baseline_real_20260702_000825.log
+2026-07-02 00:32:28,704 [INFO] Done.

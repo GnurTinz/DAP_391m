@@ -1,0 +1,7 @@
+2026-07-02 00:59:32,008 [INFO] [Eval] mode=2 | neg_strategy=real | device=cpu
+2026-07-02 00:59:32,009 [INFO] Reading model config from E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\config_backup.yaml
+2026-07-02 00:59:32,830 [INFO] Loaded checkpoint: E:\palm\logs\UnetPalmModel_Resnet18_version_15\version_15\checkpoints\last.ckpt
+2026-07-02 00:59:32,833 [INFO] Frozen 35 BatchNorm layer(s) into eval mode.
+2026-07-02 00:59:32,849 [INFO] Output directory: E:/palm/logs/UnetPalmModel_Resnet18_version_15/version_15\eval\mode2_opt_latent_real
+2026-07-02 00:59:32,850 [INFO] Building dataloader: gallery_split='val', probe_split='test'
+2026-07-02 00:59:32,890 [INFO] --- STEP 1: Extracting features ---
