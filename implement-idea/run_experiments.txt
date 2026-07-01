@@ -1,0 +1,83 @@
+# DANH SÁCH LỆNH CHẠY THỰC NGHIỆM ĐIỂM DANH (REGISTER & ATTENDANCE)
+# Phân chia rõ ràng giữa tối ưu trong Projected Space và Latent Space.
+# Bạn có thể copy paste vào terminal (PowerShell/CMD).
+
+# Cài đặt biến môi trường tạm thời (PowerShell) để tái sử dụng
+$CKPT = "logs\Unet_Palmnet\version_2\checkpoints\last.ckpt"
+$DATASET = "iitd_hand"
+
+# ==============================================================================
+# 0. BASELINE (KHÔNG TỐI ƯU R - CHẾ ĐỘ 1-NN TRUYỀN THỐNG)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=False testing.gallery_path="data/gallery_baseline.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_baseline.pt"
+
+
+################################################################################
+# PHẦN A: TỐI ƯU TRONG PROJECTED SPACE (optimize_from_latent=False)
+# Ý nghĩa: Tối ưu r trực tiếp trên đầu ra của MLP Projector.
+################################################################################
+
+# ==============================================================================
+# A1. HARD NEGATIVE MINING (DÙNG ẢNH THẬT TỪ NGƯỜI KHÁC)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=True testing.optimize_from_latent=False ++represent.neg_strategy="real" testing.gallery_path="data/gallery_proj_hard.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_proj_hard.pt"
+
+# ==============================================================================
+# A2. RANDOM / SPHERICAL (XOAY VECTOR / NHIỄU NGẪU NHIÊN)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=True testing.optimize_from_latent=False ++represent.neg_strategy="spherical" testing.gallery_path="data/gallery_proj_random.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_proj_random.pt"
+
+# ==============================================================================
+# A3. DECODER LOOP (SINH ẢNH ÂM BẢN QUA U-NET DECODER)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=True testing.optimize_from_latent=False ++represent.neg_strategy="decoder_loop" ++represent.decoder_T_min=2.0 ++represent.decoder_T_max=5.0 testing.gallery_path="data/gallery_proj_decoder.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_proj_decoder.pt"
+
+
+################################################################################
+# PHẦN B: TỐI ƯU TRONG LATENT SPACE (optimize_from_latent=True)
+# Ý nghĩa: Tối ưu r cộng trực tiếp vào không gian vật lý của Encoder (mu), 
+# sau đó mới đẩy qua Projector để tính Loss.
+################################################################################
+
+# ==============================================================================
+# B1. HARD NEGATIVE MINING (DÙNG ẢNH THẬT TỪ NGƯỜI KHÁC)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=True testing.optimize_from_latent=True ++represent.neg_strategy="real" testing.gallery_path="data/gallery_latent_hard.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_latent_hard.pt"
+
+# ==============================================================================
+# B2. RANDOM / SPHERICAL (XOAY VECTOR / NHIỄU NGẪU NHIÊN)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=True testing.optimize_from_latent=True ++represent.neg_strategy="spherical" testing.gallery_path="data/gallery_latent_random.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_latent_random.pt"
+
+# ==============================================================================
+# B3. DECODER LOOP (SINH ẢNH ÂM BẢN QUA U-NET DECODER)
+# ==============================================================================
+# Register:
+python tools/register.py checkpoint=$CKPT dataset=$DATASET testing.optimize_r=True testing.optimize_from_latent=True ++represent.neg_strategy="decoder_loop" ++represent.decoder_T_min=2.0 ++represent.decoder_T_max=5.0 testing.gallery_path="data/gallery_latent_decoder.pt"
+
+# Attendance:
+python tools/attendance.py checkpoint=$CKPT dataset=$DATASET testing.gallery_path="data/gallery_latent_decoder.pt"

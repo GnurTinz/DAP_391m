@@ -107,7 +107,11 @@ class UNetPalmModel(BaseModel):
         use_mlp = config.get('projector', {}).get('use_mlp', True)
         hidden_dims = config.get('projector', {}).get('hidden_dims', [])
         act_name = config.get('projector', {}).get('activation', 'ReLU')
-        
+
+        # inference_proj_input: 'mu' (default, deterministic/stable) hoặc 'z' (stochastic)
+        # Khi training dùng curriculum (switch_to_z_step), inference nên được cấu hình để khớp
+        self.inference_proj_input = config.get('projector', {}).get('inference_proj_input', 'mu')
+
         if use_mlp:
             activation_cls = getattr(nn, act_name, nn.ReLU)
             layers = []
@@ -117,10 +121,19 @@ class UNetPalmModel(BaseModel):
                 layers.append(activation_cls())
                 in_dim = h_dim
             layers.append(nn.Linear(in_dim, self.proj_dim))
-            # Bổ sung BatchNorm1d trước khi đi vào ArcFace (Tuyệt chiêu giúp hội tụ cực nhanh như Baseline 2)
-            use_bn = config.get('projector', {}).get('use_bn', True)
-            if use_bn:
+
+            # norm_type: 'bn' (default, BatchNorm1d), 'ln' (LayerNorm, ổn hơn với batch=1),
+            #            'none' (không norm)
+            # Backward compat: use_bn=False → tương đương norm_type='none'
+            norm_type = config.get('projector', {}).get('norm_type', 'bn')
+            use_bn    = config.get('projector', {}).get('use_bn', True)
+            if not use_bn:
+                norm_type = 'none'
+            if norm_type == 'bn':
                 layers.append(nn.BatchNorm1d(self.proj_dim))
+            elif norm_type == 'ln':
+                layers.append(nn.LayerNorm(self.proj_dim))
+            # norm_type == 'none': không thêm gì
             self.projector = nn.Sequential(*layers)
         else:
             self.projector = nn.Identity()
@@ -152,6 +165,13 @@ class UNetPalmModel(BaseModel):
         eps = torch.randn_like(std)
         return mu + eps * std * temperature
 
+    def get_proj_input(self, mu: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """
+        Trả về input đúng cho projector dựa trên inference_proj_input config.
+        Dùng khi cần gọi projector thủ công (register, pca_latent, v.v.)
+        """
+        return z if self.inference_proj_input == 'z' else mu
+
     def forward(self, x, decode=False, temperature=1.0, sample_mode='stochastic', global_step=None, switch_to_z_step=None):
         # 1. Trích xuất Latent distribution từ mạng riêng (Posterior/Prior Network)
         mu, logvar = self.latent_encoder(x)
@@ -162,11 +182,14 @@ class UNetPalmModel(BaseModel):
 
         z = self.reparameterize(mu, logvar, temperature, mode=sample_mode)
         
-        # Curriculum Learning: Chọn input cho Projector dựa trên global_step
+        # Chọn proj_input:
+        # - Training với curriculum: dùng z sau switch_to_z_step
+        # - Inference (global_step=None): dùng inference_proj_input config ('mu' hoặc 'z')
         if global_step is not None and switch_to_z_step is not None:
             proj_input = z if global_step >= switch_to_z_step else mu
         else:
-            proj_input = mu # Mặc định dùng mu nếu không truyền step
+            # Inference mode — tôn trọng cấu hình inference_proj_input
+            proj_input = self.get_proj_input(mu, z)
 
         out = {
             'mu': mu,

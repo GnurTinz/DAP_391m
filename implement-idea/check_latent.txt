@@ -1,0 +1,36 @@
+# ==============================================================================
+# CÁC KỊCH BẢN CHẠY GENERATE_IMAGES.PY ĐỂ TEST KHÔNG GIAN LATENT
+# ==============================================================================
+# Lưu ý: 
+# - Thay đổi đường dẫn 'checkpoint=...' trỏ đến file .ckpt của bạn.
+# - Nếu chạy trên Windows PowerShell, nếu gặp lỗi với dấu bằng '=', bạn có thể cần 
+#   đặt tham số trong ngoặc kép, ví dụ: "generation.mode=reconstruct"
+
+# 1. Phục hồi ảnh (Reconstruct)
+# Mục đích: Đánh giá khả năng nén thông tin của encoder và giải nén của decoder.
+python tools/generate_images.py generation.mode=reconstruct generation.num_images=8 checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="reconstruct_test.png"
+
+# 2. Nội suy không gian Latent (Interpolate)
+# Mục đích: Kiểm tra độ mượt (smoothness) của latent space giữa 2 điểm (2 ảnh).
+python tools/generate_images.py generation.mode=interpolate generation.num_images=8 checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="interpolate_test.png"
+
+# 3. Tạo các biến thể từ 1 ảnh (Variations)
+# Mục đích: Lấy latent của 1 ảnh, cộng thêm nhiễu (dựa trên temperature) để tạo ra các ảnh tương tự.
+python tools/generate_images.py generation.mode=variations generation.num_images=8 generation.temperature=1.0 checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="variations_test.png"
+
+# 4. Sinh ảnh ngẫu nhiên (Unconditional)
+# Mục đích: Sinh ảnh hoàn toàn mới từ nhiễu. 
+# (Lưu ý: UNetPalmModel trong code không hỗ trợ mode này, nó sẽ tự fallback sang variations).
+python tools/generate_images.py generation.mode=unconditional generation.num_images=8 checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="unconditional_test.png"
+
+# 5. Lấy mẫu từ không gian Latent (Latent Sampling)
+# Mục đích: Test khả năng sinh mẫu trực tiếp từ các điểm ngẫu nhiên trong latent space.
+python tools/generate_images.py generation.mode=latent_sampling generation.num_images=8 checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="latent_sampling_test.png"
+
+# 6. Trung bình latent (Average)
+# Mục đích: Encode 2 ảnh thành 2 latent, lấy trung bình cộng latent rồi decode ra ảnh.
+python tools/generate_images.py generation.mode=average generation.num_images=2 generation.temperature=1.0 checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="average_test.png"
+
+# 7. Đối chiếu (Contrastive)
+# Mục đích: Sinh ảnh để đánh giá đặc trưng contrastive (theo batch size là 6 như trong code quy định).
+python tools/generate_images.py generation.mode=contrastive checkpoint="logs/unversioned_results/checkpoints/last.ckpt" output="contrastive_test.png"
