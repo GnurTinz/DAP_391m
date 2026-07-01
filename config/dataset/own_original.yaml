@@ -1,6 +1,6 @@
 name: "OwnOriginalDataset"
 data_dir: "data/collect"
-image_size: [256, 256]
+image_size: [128, 128]
 
 # 'both', 'left', hoặc 'right' - dùng để lọc thư mục con nếu dataset có chia tay trái/phải
 hand_filter: "both"

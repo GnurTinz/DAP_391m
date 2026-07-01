@@ -5,7 +5,7 @@ batch_size: 32 # Đã được cập nhật theo yêu cầu
 num_workers: 4
 
 # Optimizer & Scheduler
-learning_rate: 0.005 # Cực kỳ quan trọng: AdamW với ResNet pretrained KHÔNG ĐƯỢC dùng 0.1 (sẽ nổ gradient)
+learning_rate: 0.001 # Cực kỳ quan trọng: AdamW với ResNet pretrained KHÔNG ĐƯỢC dùng 0.1 (sẽ nổ gradient)
 weight_decay: 0.0005
 optimizer: "AdamW"
 
@@ -27,4 +27,4 @@ accelerator: "auto" # options: "auto", "cpu", "gpu", "tpu", "mps"
 devices: 1 # number of devices (GPUs/TPUs) to use
 
 # Dùng để chạy tiếp checkpoint cũ
-resume_from_checkpoint: null
+resume_from_checkpoint: ./logs/version_4/checkpoints/best.ckpt
