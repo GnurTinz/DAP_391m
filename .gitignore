@@ -4,3 +4,4 @@ tmp/*
 papers/*
 logs/*
 outputs/*
+*.zip

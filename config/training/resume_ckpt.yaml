@@ -1,0 +1,30 @@
+# Cấu hình huấn luyện tối ưu dành riêng cho mô hình dùng ArcFace Loss
+
+epochs: 100 # Tăng lên 200 để đủ thời gian cho các phase của contrastive_first (lên tới 5000 steps)
+batch_size: 32 # Đã được cập nhật theo yêu cầu
+num_workers: 4
+
+# Optimizer & Scheduler
+learning_rate: 0.001 # Cực kỳ quan trọng: AdamW với ResNet pretrained KHÔNG ĐƯỢC dùng 0.1 (sẽ nổ gradient)
+weight_decay: 0.0005
+optimizer: "AdamW"
+
+# StepLR hoặc MultiStepLR đều được
+scheduler: "CosineAnnealingLR" # Cosine giúp làm mượt quá trình chuyển đổi loss schedule
+
+log_interval: 10
+save_interval: 1
+
+# BẬT sampler (Bắt buộc): Vì kịch bản 'contrastive_first' cần loss Contrastive.
+# Contrastive Loss yêu cầu trong 1 batch PHẢI CÓ ảnh cùng người (Positive Pair).
+use_sampler: false
+sampler_type: "pk_sampler"
+sampler_p: 8  # 8 người
+sampler_k: 4  # Mỗi người 4 ảnh (8 x 4 = 32 batch size)
+
+seed: 42
+accelerator: "auto" # options: "auto", "cpu", "gpu", "tpu", "mps"
+devices: 1 # number of devices (GPUs/TPUs) to use
+
+# Dùng để chạy tiếp checkpoint cũ
+resume_from_checkpoint: ./logs/version_0/checkpoints/best.ckpt
