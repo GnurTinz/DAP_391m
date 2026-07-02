@@ -169,12 +169,27 @@ def load_model(config: dict, device: torch.device, logger: logging.Logger):
 # DATALOADER
 # ==============================================================================
 def make_dataloader(config: dict, split: str, batch_size: int = 32) -> DataLoader:
-    ds_cfg = config.get("dataset", {})
-    name   = ds_cfg.get("name", "iitd")
-    ddir   = ds_cfg.get("data_dir", "data/IITD")
-    is_train = split in ("train",)
-    print("========================Chế độ lấy DataLoader:", is_train)
-    dataset = DatasetFactory.create(name, ddir, ds_cfg, is_train=is_train)
+    """
+    Tạo DataLoader cho một split cụ thể.
+
+    split có thể là:
+      - 'train'    : tập huấn luyện
+      - 'test'/'val': tập kiểm tra (closed-set)
+      - 'register' : gallery (open-set, person mode)
+      - 'probe'    : known probe (open-set, person mode)
+      - 'stranger' : người lạ (open-set, person mode)
+    """
+    ds_cfg  = config.get("dataset", {})
+    # Sao chép và inject 'split' vào config để dataset class biết cần load phần nào
+    ds_cfg_copy = dict(ds_cfg)
+    ds_cfg_copy['split'] = split
+
+    name     = ds_cfg_copy.get("name", "iitd")
+    ddir     = ds_cfg_copy.get("data_dir", "data/IITD")
+    is_train = split == "train"
+
+    print(f"========================Chế độ lấy DataLoader: split='{split}', is_train={is_train}")
+    dataset = DatasetFactory.create(name, ddir, ds_cfg_copy, is_train=is_train)
     return DataLoader(dataset, batch_size=batch_size, shuffle=False,
                       num_workers=4, pin_memory=True, drop_last=False)
 
@@ -440,6 +455,103 @@ def evaluate_gallery(gallery: dict, probe_proj: torch.Tensor,
         "n_gallery_ids":   len(gallery_labels_list),
     }
 
+
+def evaluate_open_set(gallery: dict,
+                      known_proj: torch.Tensor, known_labels: torch.Tensor,
+                      stranger_proj: torch.Tensor, stranger_labels: torch.Tensor,
+                      device: torch.device,
+                      eer_thresh: float = None):
+    """
+    Đánh giá Open-Set Recognition.
+
+    Args:
+        gallery       : dict label -> Tensor(N_reg, proj_dim), chỉ chứa Y người known
+        known_proj    : probe features của Y người known (Tensor N_known, proj_dim)
+        known_labels  : labels tương ứng (0..Y-1), khớp với gallery keys
+        stranger_proj : probe features của Z người lạ (Tensor N_stranger, proj_dim)
+        stranger_labels: labels người lạ (chỉ dùng để ghi log)
+        eer_thresh    : ngưỡng sđ (từ closed-set EER); None → tự tính từ genuine vs stranger
+
+    Returns dict:
+        open_set_rank1  : Rank-1 accuracy trên Y known probe (%)
+        far             : False Acceptance Rate của Z stranger (%)
+        frr             : False Rejection Rate của Y known probe (%)
+        eer             : EER giữa genuine scores và stranger max-sim (%)
+        eer_threshold   : ngưỡng sđ được dùng
+        genuine_scores  : max sim đúng person của mỗi known probe
+        stranger_max_sims: max sim tới bất kỳ gallery entry của mỗi stranger probe
+        n_known_probe   : số lượng known probe samples
+        n_stranger      : số lượng stranger samples
+        n_gallery_ids   : số identity trong gallery
+    """
+    # ── Flat gallery ──────────────────────────────────────────────────────
+    gallery_tensors_list, flat_gallery_labels = [], []
+    gallery_labels_list = sorted(gallery.keys())
+    for lbl in gallery_labels_list:
+        t = gallery[lbl].to(device)
+        gallery_tensors_list.append(t)
+        flat_gallery_labels.extend([lbl] * t.size(0))
+    gallery_tensors  = torch.cat(gallery_tensors_list, dim=0)   # (Total_G, proj_dim)
+    flat_labels_t    = torch.tensor(flat_gallery_labels, device=device)
+    gid_tensor       = torch.tensor(gallery_labels_list, device=device)
+
+    # ── Known probe similarity matrix ─────────────────────────────────────
+    known_proj_dev  = F.normalize(known_proj.to(device), p=2, dim=1)
+    known_labels_dev = known_labels.to(device)
+    raw_known_sim   = torch.mm(known_proj_dev, gallery_tensors.t())  # (N_known, Total_G)
+
+    # Aggregate per identity (max-sim 1-NN) → (N_known, N_ids)
+    sim_per_id_list = []
+    for gid in gallery_labels_list:
+        cols = (flat_labels_t == gid).nonzero(as_tuple=True)[0]
+        sim_per_id_list.append(raw_known_sim[:, cols].max(dim=1)[0])
+    sim_matrix_known = torch.stack(sim_per_id_list, dim=1)   # (N_known, N_ids)
+
+    match_matrix = (known_labels_dev.unsqueeze(1) == gid_tensor.unsqueeze(0))
+
+    # Rank-1 accuracy (closed-set, known only)
+    best_idx       = sim_matrix_known.argmax(dim=1)
+    correct        = match_matrix[torch.arange(len(known_labels_dev)), best_idx].sum().item()
+    open_set_rank1 = correct / len(known_labels_dev) * 100.0
+
+    # Genuine scores: max-sim đúng identity của mỗi known probe
+    genuine_scores = sim_matrix_known[match_matrix].cpu().tolist()
+
+    # ── Stranger probe → max-sim tới bất kỳ gallery entry ─────────────────
+    stranger_proj_dev = F.normalize(stranger_proj.to(device), p=2, dim=1)
+    raw_str_sim       = torch.mm(stranger_proj_dev, gallery_tensors.t())  # (N_str, Total_G)
+    stranger_max_sims = raw_str_sim.max(dim=1)[0].cpu().tolist()
+
+    # ── EER (genuine vs stranger) ─────────────────────────────────────────
+    eer_auto, eer_thresh_auto = calculate_eer(genuine_scores, stranger_max_sims)
+    if eer_thresh is None:
+        eer_thresh = eer_thresh_auto
+        eer_val    = eer_auto
+    else:
+        # Tính lại EER tại ngưỡng của closed-set
+        eer_val    = eer_auto   # vẫn dùng EER tính từ genuine vs stranger
+
+    # ── FAR: tỷ lệ stranger vượt ngưỡng (bị nhận nhầm) ────────────────────
+    far = sum(s >= eer_thresh for s in stranger_max_sims) / len(stranger_max_sims) * 100.0
+
+    # ── FRR: tỷ lệ known probe bị reject (genuine sim < ngưỡng) ─────────────
+    frr = sum(s < eer_thresh  for s in genuine_scores)   / len(genuine_scores)   * 100.0
+
+    return {
+        "open_set_rank1":   open_set_rank1,
+        "far":              far,
+        "frr":              frr,
+        "eer":              eer_val,
+        "eer_threshold":    eer_thresh,
+        "genuine_scores":   genuine_scores,
+        "stranger_max_sims": stranger_max_sims,
+        "mean_genuine":     float(np.mean(genuine_scores)),
+        "mean_stranger":    float(np.mean(stranger_max_sims)),
+        "n_known_probe":    len(known_labels_dev),
+        "n_stranger":       len(stranger_proj),
+        "n_gallery_ids":    len(gallery_labels_list),
+    }
+
 # ==============================================================================
 # VISUALIZATION: t-SNE
 # ==============================================================================
@@ -522,6 +634,42 @@ def plot_score_distribution(genuine: list, impostor: list,
     if logger:
         logger.info(f"Saved score distribution: {save_path}")
 
+
+def plot_openset_score_distribution(genuine: list, impostor: list, stranger_max: list,
+                                    eer: float, thresh: float,
+                                    title: str, save_path: str,
+                                    logger: logging.Logger = None):
+    """
+    Vẽ phân phối điểm cho 3 nhóm trong kịch bản Open-Set:
+      - Genuine       : known probe khớp đúng gallery
+      - Known-Impostor: known probe khớp sai gallery
+      - Stranger      : người lạ (max-sim tới bất kỳ gallery)
+    """
+    fig, ax = plt.subplots(figsize=(11, 5))
+
+    if impostor:
+        ax.hist(impostor,     bins=80, color="#f39c12", alpha=0.55,
+                label="Known-Impostor", density=True)
+    ax.hist(stranger_max,     bins=80, color="#e74c3c", alpha=0.60,
+            label="Stranger (max-sim)", density=True)
+    ax.hist(genuine,          bins=80, color="#2ecc71", alpha=0.65,
+            label="Genuine (known probe)", density=True)
+
+    ax.axvline(thresh, color="#8e44ad", linestyle="--", linewidth=1.8,
+               label=f"EER thresh={thresh:.3f}  (EER={eer:.2f}%)")
+
+    ax.set_title(title, fontsize=13, pad=10)
+    ax.set_xlabel("Cosine Similarity Score")
+    ax.set_ylabel("Density")
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+    if logger:
+        logger.info(f"Saved open-set score distribution: {save_path}")
+
+
 # ==============================================================================
 # ENTRY POINT (HYDRA)
 # ==============================================================================
@@ -565,99 +713,241 @@ def main(cfg: DictConfig):
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Output directory: {output_dir}")
 
-    # ── Cache paths ────────────────────────────────────────────────────────────
-    # Feature cache chia sẻ giữa tất cả mode cùng checkpoint (nằm ngoài run_name)
-    shared_cache_dir   = out_base  # version_dir/eval/
-    gallery_feat_cache = os.path.join(shared_cache_dir, f"feats_{gallery_split}.pt")
-    probe_feat_cache   = os.path.join(shared_cache_dir, f"feats_{probe_split}.pt")
-    gallery_cache      = os.path.join(output_dir, "gallery.pt")
-    results_path       = os.path.join(output_dir, "results.json")
+    shared_cache_dir = out_base  # version_dir/eval/ — dùng chung feature cache
 
-    # ── Load dataset ───────────────────────────────────────────────────────────
-    logger.info(f"Building dataloader: gallery_split='{gallery_split}', probe_split='{probe_split}'")
-    gallery_loader = make_dataloader(config, gallery_split, batch_size)
-    probe_loader   = make_dataloader(config, probe_split,   batch_size)
+    # ── Phát hiện kịch bản ─────────────────────────────────────────────────────
+    split_mode    = config.get("dataset", {}).get("split_mode", "")
+    is_person_mode = split_mode == "person"
 
-    # ── Extract features ───────────────────────────────────────────────────────
-    logger.info("--- STEP 1: Extracting features ---")
-    g_mu, g_proj, g_logvar, g_labels, g_ref_images = extract_features(
-        model, gallery_loader, device, gallery_feat_cache, force=force, logger=logger)
-    p_mu, p_proj, p_logvar, p_labels, _ = extract_features(
-        model, probe_loader, device, probe_feat_cache, force=force, logger=logger)
+    if is_person_mode:
+        # ══════════════════════════════════════════════════════════════════════
+        # OPEN-SET RECOGNITION MODE  (split_mode = 'person')
+        # Gallery = register / Probe = known probe / Stranger = người lạ
+        # ══════════════════════════════════════════════════════════════════════
+        logger.info(f"[Open-Set Mode] split_mode='{split_mode}' — building 3 dataloaders")
 
-    logger.info(f"Gallery: {g_mu.shape[0]} samples, {g_labels.unique().numel()} identities ({len(g_ref_images)} ref images cached)")
-    logger.info(f"Probe  : {p_mu.shape[0]} samples, {p_labels.unique().numel()} identities")
+        register_loader = make_dataloader(config, "register", batch_size)
+        probe_loader    = make_dataloader(config, "probe",    batch_size)
+        stranger_loader = make_dataloader(config, "stranger", batch_size)
 
-    # ── Build gallery ──────────────────────────────────────────────────────────
-    logger.info("--- STEP 2: Building gallery ---")
-    gallery = build_gallery(
-        model, g_mu, g_proj, g_logvar, g_labels,
-        eval_cfg=eval_cfg, device=device,
-        cache_path=gallery_cache, force=force, logger=logger,
-        ref_images=g_ref_images,
-    )
+        reg_feat_cache  = os.path.join(shared_cache_dir, "feats_register.pt")
+        prob_feat_cache = os.path.join(shared_cache_dir, "feats_probe.pt")
+        str_feat_cache  = os.path.join(shared_cache_dir, "feats_stranger.pt")
+        gallery_cache   = os.path.join(output_dir, "gallery.pt")
+        results_path    = os.path.join(output_dir, "results.json")
 
-    # ── Evaluate ───────────────────────────────────────────────────────────────
-    logger.info("--- STEP 3: Evaluating ---")
-    results = evaluate_gallery(gallery, p_proj, p_labels, device)
+        # ── STEP 1: Extract features ─────────────────────────────────────
+        logger.info("--- STEP 1: Extracting features (register / probe / stranger) ---")
+        reg_mu,  reg_proj,  reg_logvar,  reg_labels,  reg_ref = extract_features(
+            model, register_loader, device, reg_feat_cache,  force=force, logger=logger)
+        prob_mu, prob_proj, prob_logvar, prob_labels, _ = extract_features(
+            model, probe_loader,    device, prob_feat_cache, force=force, logger=logger)
+        str_mu,  str_proj,  str_logvar,  str_labels,  _ = extract_features(
+            model, stranger_loader, device, str_feat_cache,  force=force, logger=logger)
 
-    logger.info("=" * 60)
-    logger.info(f"  Rank-1 Accuracy : {results['rank1_acc']:.2f}%")
-    logger.info(f"  EER             : {results['eer']:.2f}%  (threshold={results['eer_threshold']:.4f})")
-    logger.info(f"  Mean Genuine    : {results['mean_genuine']:.4f}")
-    logger.info(f"  Mean Impostor   : {results['mean_impostor']:.4f}")
-    logger.info(f"  Probe count     : {results['n_probe']}")
-    logger.info(f"  Gallery IDs     : {results['n_gallery_ids']}")
-    logger.info("=" * 60)
+        logger.info(f"Register : {reg_mu.shape[0]} samples, {reg_labels.unique().numel()} identities")
+        logger.info(f"Probe    : {prob_mu.shape[0]} samples, {prob_labels.unique().numel()} identities")
+        logger.info(f"Stranger : {str_mu.shape[0]} samples, {str_labels.unique().numel()} identities")
 
-    # Lưu kết quả JSON
-    results["config"] = {
-        "mode": mode, "neg_strategy": neg_strategy,
-        "run_name": run_name,
-        "checkpoint": config.get("checkpoint", ""),
-    }
-    with open(results_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
-    logger.info(f"Saved results: {results_path}")
+        # ── STEP 2: Build gallery từ register split ───────────────────────
+        logger.info("--- STEP 2: Building gallery (from register split) ---")
+        gallery = build_gallery(
+            model, reg_mu, reg_proj, reg_logvar, reg_labels,
+            eval_cfg=eval_cfg, device=device,
+            cache_path=gallery_cache, force=force, logger=logger,
+            ref_images=reg_ref,
+        )
 
-    # ── Visualize: Score Distribution ──────────────────────────────────────────
-    logger.info("--- STEP 4: Visualizing score distribution ---")
-    plot_score_distribution(
-        genuine   = results["genuine_scores"],
-        impostor  = results["impostor_scores"],
-        eer       = results["eer"],
-        thresh    = results["eer_threshold"],
-        title     = f"Score Distribution [{run_name}]\nRank-1={results['rank1_acc']:.2f}%  EER={results['eer']:.2f}%",
-        save_path = os.path.join(output_dir, "score_distribution.png"),
-        logger    = logger,
-    )
+        # ── STEP 3a: Closed-set eval trên known probe ─────────────────────
+        logger.info("--- STEP 3a: Closed-set evaluation on known probe ---")
+        closed_results = evaluate_gallery(gallery, prob_proj, prob_labels, device)
 
-    # ── Visualize: t-SNE (Proj Space) ─────────────────────────────────────────
-    logger.info("--- STEP 5: t-SNE visualization ---")
-    # Dùng gallery features để visualize (tập val có thể nhỏ hơn, dễ nhìn hơn)
-    all_feats  = torch.cat([g_proj, p_proj], dim=0).numpy()
-    all_labels = torch.cat([g_labels, p_labels], dim=0).numpy()
+        logger.info("=" * 60)
+        logger.info("  [Closed-Set — Known Probe Only]")
+        logger.info(f"  Rank-1 Accuracy : {closed_results['rank1_acc']:.2f}%")
+        logger.info(f"  EER             : {closed_results['eer']:.2f}%  (thresh={closed_results['eer_threshold']:.4f})")
+        logger.info(f"  Mean Genuine    : {closed_results['mean_genuine']:.4f}")
+        logger.info(f"  Mean Impostor   : {closed_results['mean_impostor']:.4f}")
+        logger.info(f"  Probe count     : {closed_results['n_probe']}")
+        logger.info("=" * 60)
 
-    plot_tsne(
-        feats     = all_feats,
-        labels    = all_labels,
-        title     = f"t-SNE (Projected Space) [{run_name}]",
-        save_path = os.path.join(output_dir, "tsne_proj.png"),
-        top_k     = tsne_top_k,
-        perplexity= tsne_perp,
-        logger    = logger,
-    )
+        # ── STEP 3b: Open-set eval với stranger ───────────────────────────
+        logger.info("--- STEP 3b: Open-set evaluation with stranger ---")
+        open_results = evaluate_open_set(
+            gallery,
+            prob_proj, prob_labels,
+            str_proj,  str_labels,
+            device,
+            eer_thresh=closed_results["eer_threshold"],
+        )
 
-    all_mu_np     = torch.cat([g_mu, p_mu], dim=0).numpy()
-    plot_tsne(
-        feats     = all_mu_np,
-        labels    = all_labels,
-        title     = f"t-SNE (Mu / Latent Space) [{run_name}]",
-        save_path = os.path.join(output_dir, "tsne_mu.png"),
-        top_k     = tsne_top_k,
-        perplexity= tsne_perp,
-        logger    = logger,
-    )
+        logger.info("=" * 60)
+        logger.info("  [Open-Set — Known + Stranger]")
+        logger.info(f"  Open-Set Rank-1 : {open_results['open_set_rank1']:.2f}%")
+        logger.info(f"  FAR (stranger)  : {open_results['far']:.2f}%   — stranger bị nhận nhầm")
+        logger.info(f"  FRR (known)     : {open_results['frr']:.2f}%   — known bị reject sai")
+        logger.info(f"  EER (open-set)  : {open_results['eer']:.2f}%  (thresh={open_results['eer_threshold']:.4f})")
+        logger.info(f"  Mean Genuine    : {open_results['mean_genuine']:.4f}")
+        logger.info(f"  Mean Stranger   : {open_results['mean_stranger']:.4f}")
+        logger.info(f"  Known probe     : {open_results['n_known_probe']} | Stranger: {open_results['n_stranger']}")
+        logger.info("=" * 60)
+
+        # ── Lưu JSON ──────────────────────────────────────────────────────
+        all_results = {
+            "closed_set": closed_results,
+            "open_set":   open_results,
+            "config": {
+                "mode": mode, "neg_strategy": neg_strategy,
+                "run_name": run_name, "split_mode": split_mode,
+                "num_train_persons":    config.get("dataset", {}).get("num_train_persons"),
+                "num_known_persons":    config.get("dataset", {}).get("num_known_persons"),
+                "num_stranger_persons": config.get("dataset", {}).get("num_stranger_persons"),
+                "register_ratio":       config.get("dataset", {}).get("register_ratio"),
+                "checkpoint": config.get("checkpoint", ""),
+            },
+        }
+        with open(results_path, "w", encoding="utf-8") as f:
+            json.dump(all_results, f, indent=2)
+        logger.info(f"Saved results: {results_path}")
+
+        # ── STEP 4: Open-Set Score Distribution ───────────────────────────
+        logger.info("--- STEP 4: Visualizing open-set score distribution ---")
+        plot_openset_score_distribution(
+            genuine      = open_results["genuine_scores"],
+            impostor     = closed_results.get("impostor_scores", []),
+            stranger_max = open_results["stranger_max_sims"],
+            eer          = open_results["eer"],
+            thresh       = open_results["eer_threshold"],
+            title        = (f"Open-Set Score Distribution [{run_name}]\n"
+                            f"Rank-1={open_results['open_set_rank1']:.2f}%  "
+                            f"FAR={open_results['far']:.2f}%  "
+                            f"FRR={open_results['frr']:.2f}%"),
+            save_path    = os.path.join(output_dir, "score_distribution_openset.png"),
+            logger       = logger,
+        )
+
+        # ── STEP 5: t-SNE ─────────────────────────────────────────────────
+        logger.info("--- STEP 5: t-SNE visualization ---")
+        n_known_ids       = int(reg_labels.max().item()) + 1
+        str_labels_offset = str_labels + n_known_ids
+
+        all_feats_np  = torch.cat([reg_proj, prob_proj, str_proj], dim=0).numpy()
+        all_labels_np = torch.cat([reg_labels, prob_labels, str_labels_offset], dim=0).numpy()
+
+        plot_tsne(
+            feats      = all_feats_np,
+            labels     = all_labels_np,
+            title      = (f"t-SNE (Proj Space) [{run_name}]\n"
+                          f"known IDs 0..{n_known_ids-1},  strangers {n_known_ids}+"),
+            save_path  = os.path.join(output_dir, "tsne_proj.png"),
+            top_k      = tsne_top_k,
+            perplexity = tsne_perp,
+            logger     = logger,
+        )
+
+        all_mu_np = torch.cat([reg_mu, prob_mu, str_mu], dim=0).numpy()
+        plot_tsne(
+            feats      = all_mu_np,
+            labels     = all_labels_np,
+            title      = (f"t-SNE (Mu Space) [{run_name}]\n"
+                          f"known IDs 0..{n_known_ids-1},  strangers {n_known_ids}+"),
+            save_path  = os.path.join(output_dir, "tsne_mu.png"),
+            top_k      = tsne_top_k,
+            perplexity = tsne_perp,
+            logger     = logger,
+        )
+
+    else:
+        # ══════════════════════════════════════════════════════════════════════
+        # CLOSED-SET MODE  (hand / ratio / session / mixed)
+        # ══════════════════════════════════════════════════════════════════════
+        logger.info(f"Building dataloader: gallery_split='{gallery_split}', probe_split='{probe_split}'")
+        gallery_loader = make_dataloader(config, gallery_split, batch_size)
+        probe_loader   = make_dataloader(config, probe_split,   batch_size)
+
+        gallery_feat_cache = os.path.join(shared_cache_dir, f"feats_{gallery_split}.pt")
+        probe_feat_cache   = os.path.join(shared_cache_dir, f"feats_{probe_split}.pt")
+        gallery_cache      = os.path.join(output_dir, "gallery.pt")
+        results_path       = os.path.join(output_dir, "results.json")
+
+        # ── STEP 1: Extract features ──────────────────────────────────────
+        logger.info("--- STEP 1: Extracting features ---")
+        g_mu, g_proj, g_logvar, g_labels, g_ref_images = extract_features(
+            model, gallery_loader, device, gallery_feat_cache, force=force, logger=logger)
+        p_mu, p_proj, p_logvar, p_labels, _ = extract_features(
+            model, probe_loader, device, probe_feat_cache, force=force, logger=logger)
+
+        logger.info(f"Gallery: {g_mu.shape[0]} samples, {g_labels.unique().numel()} identities ({len(g_ref_images)} ref images cached)")
+        logger.info(f"Probe  : {p_mu.shape[0]} samples, {p_labels.unique().numel()} identities")
+
+        # ── STEP 2: Build gallery ─────────────────────────────────────────
+        logger.info("--- STEP 2: Building gallery ---")
+        gallery = build_gallery(
+            model, g_mu, g_proj, g_logvar, g_labels,
+            eval_cfg=eval_cfg, device=device,
+            cache_path=gallery_cache, force=force, logger=logger,
+            ref_images=g_ref_images,
+        )
+
+        # ── STEP 3: Evaluate ──────────────────────────────────────────────
+        logger.info("--- STEP 3: Evaluating ---")
+        results = evaluate_gallery(gallery, p_proj, p_labels, device)
+
+        logger.info("=" * 60)
+        logger.info(f"  Rank-1 Accuracy : {results['rank1_acc']:.2f}%")
+        logger.info(f"  EER             : {results['eer']:.2f}%  (threshold={results['eer_threshold']:.4f})")
+        logger.info(f"  Mean Genuine    : {results['mean_genuine']:.4f}")
+        logger.info(f"  Mean Impostor   : {results['mean_impostor']:.4f}")
+        logger.info(f"  Probe count     : {results['n_probe']}")
+        logger.info(f"  Gallery IDs     : {results['n_gallery_ids']}")
+        logger.info("=" * 60)
+
+        results["config"] = {
+            "mode": mode, "neg_strategy": neg_strategy,
+            "run_name": run_name,
+            "checkpoint": config.get("checkpoint", ""),
+        }
+        with open(results_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+        logger.info(f"Saved results: {results_path}")
+
+        # ── STEP 4: Score Distribution ────────────────────────────────────
+        logger.info("--- STEP 4: Visualizing score distribution ---")
+        plot_score_distribution(
+            genuine   = results["genuine_scores"],
+            impostor  = results["impostor_scores"],
+            eer       = results["eer"],
+            thresh    = results["eer_threshold"],
+            title     = f"Score Distribution [{run_name}]\nRank-1={results['rank1_acc']:.2f}%  EER={results['eer']:.2f}%",
+            save_path = os.path.join(output_dir, "score_distribution.png"),
+            logger    = logger,
+        )
+
+        # ── STEP 5: t-SNE ─────────────────────────────────────────────────
+        logger.info("--- STEP 5: t-SNE visualization ---")
+        all_feats  = torch.cat([g_proj, p_proj], dim=0).numpy()
+        all_labels = torch.cat([g_labels, p_labels], dim=0).numpy()
+
+        plot_tsne(
+            feats      = all_feats,
+            labels     = all_labels,
+            title      = f"t-SNE (Projected Space) [{run_name}]",
+            save_path  = os.path.join(output_dir, "tsne_proj.png"),
+            top_k      = tsne_top_k,
+            perplexity = tsne_perp,
+            logger     = logger,
+        )
+
+        all_mu_np = torch.cat([g_mu, p_mu], dim=0).numpy()
+        plot_tsne(
+            feats      = all_mu_np,
+            labels     = all_labels,
+            title      = f"t-SNE (Mu / Latent Space) [{run_name}]",
+            save_path  = os.path.join(output_dir, "tsne_mu.png"),
+            top_k      = tsne_top_k,
+            perplexity = tsne_perp,
+            logger     = logger,
+        )
 
     # ── Summary ────────────────────────────────────────────────────────────────
     logger.info("")

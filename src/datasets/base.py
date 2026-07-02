@@ -106,8 +106,14 @@ class BaseDataset(Dataset, ABC):
         """
         pass
 
+    @property
+    def labels(self):
+        return self.get_labels()
+
     def get_labels(self):
         """
         Return a list of labels for all samples, useful for samplers.
         """
+        if hasattr(self, 'samples') and self.samples:
+            return [label for _, label in self.samples]
         raise NotImplementedError

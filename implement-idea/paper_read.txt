@@ -1,0 +1,17 @@
+[1] https://www.sciencedirect.com/science/article/abs/pii/S0925231224014164
+[2] http://arxiv.org/abs/2301.03580
+[3] http://arxiv.org/abs/2301.05712
+[4] http://arxiv.org/abs/2111.06377
+[5] https://ieeexplore.ieee.org/document/9226466/
+[6] http://arxiv.org/abs/2501.01166
+[7] https://ieeexplore.ieee.org/abstract/document/10223233
+[8] https://ieeexplore.ieee.org/document/10453292
+[9] https://ieeexplore.ieee.org/document/8691498/
+[10] http://arxiv.org/abs/2401.16386
+[11] https://arxiv.org/pdf/1902.04601
+[12] https://proceedings.neurips.cc/paper_files/paper/2021/file/0496604c1d80f66fbeb963c12e570a26-Paper.pdf
+[13] http://arxiv.org/abs/1806.05034
+[14] https://arxiv.org/abs/2206.00050
+[15] https://arxiv.org/abs/1806.05034
+[16] https://arxiv.org/pdf/2003.11339
+[17] https://arxiv.org/pdf/1904.09658

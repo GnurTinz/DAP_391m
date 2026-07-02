@@ -118,6 +118,46 @@ class PalmDataModule(pl.LightningDataModule):
                 print(f"[DATASET INFO] Tập Train: {len(self.train_dataset)} samples")
                 print(f"[DATASET INFO] Tập Val: {len(self.val_dataset)} samples")
                 print("-" * 50)
+
+            elif split_mode == 'person':
+                # Kịch bản Open-Set Recognition: chia theo số người
+                # Train: X người, Val: probe của Y người known (unseen trong train)
+                train_cfg = dict(self.dataset_cfg)
+                train_cfg['split'] = 'train'
+
+                val_cfg = dict(self.dataset_cfg)
+                val_cfg['split'] = 'probe'
+
+                self.train_dataset = DatasetFactory.create(
+                    self.dataset_name,
+                    data_dir=self.data_dir,
+                    config=train_cfg,
+                    is_train=True
+                )
+
+                self.val_dataset = DatasetFactory.create(
+                    self.dataset_name,
+                    data_dir=self.data_dir,
+                    config=val_cfg,
+                    is_train=False
+                )
+
+                num_train    = self.dataset_cfg.get('num_train_persons', '?')
+                num_known    = self.dataset_cfg.get('num_known_persons', '?')
+                num_stranger = self.dataset_cfg.get('num_stranger_persons', '(rest)')
+                reg_ratio    = self.dataset_cfg.get('register_ratio', 0.5)
+
+                print("-" * 50)
+                print(f"[DATASET INFO] Tên Dataset: {self.dataset_name}")
+                print(f"[DATASET INFO] Thư mục: {self.data_dir}")
+                print(f"[DATASET INFO] Split Mode: Person (Open-Set Recognition)")
+                print(f"[DATASET INFO] Train persons (X): {num_train}")
+                print(f"[DATASET INFO] Known persons (Y): {num_known} | register_ratio={reg_ratio}")
+                print(f"[DATASET INFO] Stranger persons (Z): {num_stranger}")
+                print(f"[DATASET INFO] Tập Train: {len(self.train_dataset)} samples")
+                print(f"[DATASET INFO] Tập Val (probe): {len(self.val_dataset)} samples")
+                print("-" * 50)
+
             else:
                 raise ValueError(f"Unknown split_mode: {split_mode}")
 
