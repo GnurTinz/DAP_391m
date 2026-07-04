@@ -15,3 +15,6 @@
 [15] https://arxiv.org/abs/1806.05034
 [16] https://arxiv.org/pdf/2003.11339
 [17] https://arxiv.org/pdf/1904.09658
+[18] https://openaccess.thecvf.com/content_ECCV_2018/papers/Xudong_Lin_Deep_Variational_Metric_ECCV_2018_paper.pdf
+[19] https://www.researchgate.net/profile/Alexey-Zaytsev/publication/383428621_Gallery-Aware_Uncertainty_Estimation_For_Open-Set_Face_Recognition/links/672481145852dd723ca212f2/Gallery-Aware-Uncertainty-Estimation-For-Open-Set-Face-Recognition.pdf?__cf_chl_f_tk=tuoFgrOB85WMII_nnFDP_nI9WXPfuxjGFvH0HpBV_v8-1783010356-1.0.1.1-31eaQLaxwiecyu8GE3jAaqy8H4Cr_IM_AQPIjA1gYdg
+[20] https://openaccess.thecvf.com/content/CVPR2025/papers/Jin_Diff-Palm_Realistic_Palmprint_Generation_with_Polynomial_Creases_and_Intra-Class_Variation_CVPR_2025_paper.pdf

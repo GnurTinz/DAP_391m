@@ -124,20 +124,31 @@ class GenerativeLightningModule(pl.LightningModule):
             
         con = torch.tensor(0.0, device=self.device)
         if self.use_contrastive and 'proj' in outputs and self.contrastive_loss is not None:
-            try:
+            # Prevent CUDA device-side assert by checking label bounds
+            num_classes = getattr(self.contrastive_loss, 'num_classes', None)
+            if num_classes is None and hasattr(self.contrastive_loss, 'loss_fn') and hasattr(self.contrastive_loss.loss_fn, 'num_classes'):
+                num_classes = self.contrastive_loss.loss_fn.num_classes
+            elif num_classes is None and hasattr(self.contrastive_loss, 'loss_fn') and hasattr(self.contrastive_loss.loss_fn, 'W'):
+                num_classes = self.contrastive_loss.loss_fn.W.shape[1]
+            
+            # If we couldn't find num_classes from the loss, fallback to config
+            if num_classes is None:
+                num_classes = self.config.get('dataset', {}).get('num_train_persons', self.config.get('dataset', {}).get('num_classes', 100))
+                
+            if torch.any(labels >= num_classes) or torch.any(labels < 0):
+                # Open-set validation: Labels exceed initialized classifier weights
+                pass
+            else:
                 con = self.contrastive_loss(outputs['proj'], labels)
                 total_loss += self.lambda_con * con
                 
-                # Nếu hàm loss có sinh ra logits (vd: ArcFaceLoss), ta tính thêm Accuracy
+                # Tính Accuracy nếu có logits
                 if hasattr(self.contrastive_loss, 'last_logits'):
                     logits = self.contrastive_loss.last_logits
                     preds = torch.argmax(logits, dim=1)
                     acc = (preds == labels).float().mean()
                     prog_bar_details = self.config.get('logging', {}).get('prog_bar_details', True)
                     self.log(f'{stage}/Accuracy', acc, prog_bar=prog_bar_details, on_step=True, on_epoch=True)
-            except IndexError:
-                # Open-set validation: Nhãn của tập Known/Probe vượt quá số lượng classifier weights đã khởi tạo
-                pass
             
         # Cấu hình hiển thị Progress Bar (Colab thường cần gọn gàng)
         prog_bar_details = self.config.get('logging', {}).get('prog_bar_details', True)
