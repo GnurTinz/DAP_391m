@@ -1,0 +1,16 @@
+2026-07-07 10:05:39,272 [INFO] [Eval] mode=0 | neg_strategy=real | device=cpu
+2026-07-07 10:05:39,273 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+2026-07-07 10:05:45,031 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
+2026-07-07 10:05:45,037 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-07 10:05:45,174 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real
+2026-07-07 10:05:45,175 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-07 10:05:46,201 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-07 10:05:46,201 [INFO] Loading feature cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_register.pt
+2026-07-07 10:05:46,763 [INFO] Loading feature cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_probe.pt
+2026-07-07 10:05:47,384 [INFO] Loading feature cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_stranger.pt
+2026-07-07 10:05:47,858 [INFO] Register : 1911 samples, 40 identities
+2026-07-07 10:05:47,858 [INFO] Probe    : 1936 samples, 40 identities
+2026-07-07 10:05:47,859 [INFO] Stranger : 2945 samples, 31 identities
+2026-07-07 10:05:47,859 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-07 10:05:47,860 [INFO] Loading gallery cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\gallery.pt
+2026-07-07 10:05:47,896 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---

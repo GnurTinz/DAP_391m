@@ -100,7 +100,14 @@ def make_logger(log_dir: str, run_name: str) -> logging.Logger:
         fh.setFormatter(fmt)
         fh.setLevel(logging.DEBUG)
         logger.addHandler(fh)
-        ch = logging.StreamHandler()
+        
+        # Sửa lỗi UnicodeEncodeError trên console Windows
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8')
+            
+        ch = logging.StreamHandler(sys.stdout)
         ch.setFormatter(fmt)
         ch.setLevel(logging.INFO)
         logger.addHandler(ch)
@@ -275,8 +282,15 @@ def build_gallery(model, mu, proj, logvar, labels, eval_cfg: dict,
         ref_images = {}
 
     if cache_path and os.path.exists(cache_path) and not force:
-        logger.info(f"Loading gallery cache: {cache_path}")
-        return torch.load(cache_path, map_location="cpu")
+        cached_gallery = torch.load(cache_path, map_location="cpu")
+        if len(cached_gallery) > 0:
+            first_val = next(iter(cached_gallery.values()))
+            if isinstance(first_val, dict) and "feat" in first_val:
+                logger.info(f"Loading gallery cache: {cache_path}")
+                return cached_gallery
+            else:
+                if logger:
+                    logger.warning("Old gallery cache format detected! Ignoring cache and rebuilding.")
 
     unique_labels = labels.unique().tolist()
     gallery = {}
@@ -346,7 +360,7 @@ def build_gallery(model, mu, proj, logvar, labels, eval_cfg: dict,
                 gallery_r_list.append(r_i)
             gallery_r = torch.stack(gallery_r_list, dim=0)  # (N, proj_dim)
 
-        elif mode == 2:
+        elif mode == 2 or mode == 4:
             # Optimize r trong Latent Space (per-image)
             gallery_r_list = []
             for i in range(mu_group.size(0)):
@@ -364,16 +378,28 @@ def build_gallery(model, mu, proj, logvar, labels, eval_cfg: dict,
                     lr=eval_cfg.get("lr_opt", 0.01),
                     verbose=False,
                 )
-                with torch.no_grad():
-                    proj_r = model.projector(mu_c + r_latent)
-                    proj_r = F.normalize(proj_r, p=2, dim=1)
-                gallery_r_list.append(proj_r.squeeze(0))
-            gallery_r = torch.stack(gallery_r_list, dim=0)  # (N, proj_dim)
+                if mode == 2:
+                    with torch.no_grad():
+                        proj_r = model.projector(mu_c + r_latent)
+                        proj_r = F.normalize(proj_r, p=2, dim=1)
+                    gallery_r_list.append(proj_r.squeeze(0))
+                else: # mode == 4 (Đánh giá trực tiếp trên mu)
+                    mu_r = F.normalize(mu_c + r_latent, p=2, dim=1)
+                    gallery_r_list.append(mu_r.squeeze(0))
+            gallery_r = torch.stack(gallery_r_list, dim=0)  # (N, dim)
+
+        elif mode == 3:
+            # Baseline: 1-NN dùng mu trực tiếp (Latent Space)
+            gallery_r = F.normalize(mu_group, p=2, dim=1)
 
         else:
-            raise ValueError(f"Unknown mode: {mode}. Use 0, 1, or 2.")
+            raise ValueError(f"Unknown mode: {mode}. Use 0, 1, 2, 3, or 4.")
 
-        gallery[int(lbl)] = gallery_r.cpu()
+        gallery[int(lbl)] = {
+            "feat": gallery_r.cpu(),
+            "mu": mu_group.cpu(),
+            "logvar": logvar_group.cpu()
+        }
 
     if cache_path:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
@@ -397,6 +423,27 @@ def calculate_eer(genuine_scores: list, impostor_scores: list):
     thresh = thresholds[eer_idx]
     return float(eer * 100), float(thresh)
 
+
+def compute_pairwise_kl(mu_p, logvar_p, mu_g, logvar_g):
+    """
+    Tính Pairwise KL Divergence giữa Probe và Gallery.
+    """
+    var_p = torch.exp(logvar_p)
+    var_g = torch.exp(logvar_g)
+    D = mu_p.size(1)
+    
+    inv_var_g = 1.0 / var_g
+    term1 = torch.mm(var_p, inv_var_g.t())
+    t2_a = torch.mm(mu_p**2, inv_var_g.t())
+    t2_b = -2.0 * torch.mm(mu_p, (mu_g * inv_var_g).t())
+    t2_c = (mu_g**2 * inv_var_g).sum(dim=1).unsqueeze(0)
+    term2 = t2_a + t2_b + t2_c
+    
+    term3 = logvar_g.sum(dim=1).unsqueeze(0) - logvar_p.sum(dim=1).unsqueeze(1)
+    
+    kl = 0.5 * (term1 + term2 - D + term3)
+    return kl
+
 def evaluate_gallery(gallery: dict, probe_proj: torch.Tensor,
                      probe_labels: torch.Tensor, device: torch.device):
     """
@@ -408,7 +455,7 @@ def evaluate_gallery(gallery: dict, probe_proj: torch.Tensor,
     gallery_labels_list = sorted(gallery.keys())
 
     for lbl in gallery_labels_list:
-        t = gallery[lbl].to(device)
+        t = gallery[lbl]["feat"].to(device)
         gallery_tensors_list.append(t)
         flat_gallery_labels.extend([lbl] * t.size(0))
 
@@ -460,7 +507,11 @@ def evaluate_open_set(gallery: dict,
                       known_proj: torch.Tensor, known_labels: torch.Tensor,
                       stranger_proj: torch.Tensor, stranger_labels: torch.Tensor,
                       device: torch.device,
-                      eer_thresh: float = None):
+                      eer_thresh: float = None,
+                      known_mu: torch.Tensor = None,
+                      known_logvar: torch.Tensor = None,
+                      stranger_mu: torch.Tensor = None,
+                      stranger_logvar: torch.Tensor = None):
     """
     Đánh giá Open-Set Recognition.
 
@@ -486,12 +537,20 @@ def evaluate_open_set(gallery: dict,
     """
     # ── Flat gallery ──────────────────────────────────────────────────────
     gallery_tensors_list, flat_gallery_labels = [], []
+    gallery_mu_list, gallery_logvar_list = [], []
     gallery_labels_list = sorted(gallery.keys())
     for lbl in gallery_labels_list:
-        t = gallery[lbl].to(device)
+        gdata = gallery[lbl]
+        t = gdata["feat"].to(device)
+        m = gdata["mu"].to(device)
+        lv = gdata["logvar"].to(device)
         gallery_tensors_list.append(t)
+        gallery_mu_list.append(m)
+        gallery_logvar_list.append(lv)
         flat_gallery_labels.extend([lbl] * t.size(0))
     gallery_tensors  = torch.cat(gallery_tensors_list, dim=0)   # (Total_G, proj_dim)
+    gallery_mu       = torch.cat(gallery_mu_list, dim=0)
+    gallery_logvar   = torch.cat(gallery_logvar_list, dim=0)
     flat_labels_t    = torch.tensor(flat_gallery_labels, device=device)
     gid_tensor       = torch.tensor(gallery_labels_list, device=device)
 
@@ -499,6 +558,26 @@ def evaluate_open_set(gallery: dict,
     known_proj_dev  = F.normalize(known_proj.to(device), p=2, dim=1)
     known_labels_dev = known_labels.to(device)
     raw_known_sim   = torch.mm(known_proj_dev, gallery_tensors.t())  # (N_known, Total_G)
+
+    # ── Áp dụng màng lọc KL Divergence (nếu có mu, logvar) ────────────────
+    kl_thresh = None
+    kl_eer = 0.0
+    if known_mu is not None and known_logvar is not None:
+        known_mu_dev = known_mu.to(device)
+        known_lv_dev = known_logvar.to(device)
+        raw_known_kl = compute_pairwise_kl(known_mu_dev, known_lv_dev, gallery_mu, gallery_logvar)
+        
+        # Tìm ngưỡng KL từ tập Known (Genuine vs Impostor)
+        match_matrix_kl = (known_labels_dev.unsqueeze(1) == flat_labels_t.unsqueeze(0))
+        genuine_kl = raw_known_kl[match_matrix_kl].cpu().tolist()
+        impostor_kl = raw_known_kl[~match_matrix_kl].cpu().tolist()
+        
+        # calculate_eer cần score lớn là Genuine. Mà KL nhỏ là Genuine, nên đảo dấu
+        kl_eer, neg_kl_thresh = calculate_eer([-x for x in genuine_kl], [-x for x in impostor_kl])
+        kl_thresh = -neg_kl_thresh
+        
+        # KL Gating: Nếu khoảng cách KL > ngưỡng -> Cosine = -1
+        raw_known_sim[raw_known_kl > kl_thresh] = -1.0
 
     # Aggregate per identity (max-sim 1-NN) → (N_known, N_ids)
     sim_per_id_list = []
@@ -520,6 +599,13 @@ def evaluate_open_set(gallery: dict,
     # ── Stranger probe → max-sim tới bất kỳ gallery entry ─────────────────
     stranger_proj_dev = F.normalize(stranger_proj.to(device), p=2, dim=1)
     raw_str_sim       = torch.mm(stranger_proj_dev, gallery_tensors.t())  # (N_str, Total_G)
+
+    if kl_thresh is not None and stranger_mu is not None and stranger_logvar is not None:
+        str_mu_dev = stranger_mu.to(device)
+        str_lv_dev = stranger_logvar.to(device)
+        raw_str_kl = compute_pairwise_kl(str_mu_dev, str_lv_dev, gallery_mu, gallery_logvar)
+        raw_str_sim[raw_str_kl > kl_thresh] = -1.0
+
     stranger_max_sims = raw_str_sim.max(dim=1)[0].cpu().tolist()
 
     # ── EER (genuine vs stranger) ─────────────────────────────────────────
@@ -531,11 +617,46 @@ def evaluate_open_set(gallery: dict,
         # Tính lại EER tại ngưỡng của closed-set
         eer_val    = eer_auto   # vẫn dùng EER tính từ genuine vs stranger
 
-    # ── FAR: tỷ lệ stranger vượt ngưỡng (bị nhận nhầm) ────────────────────
-    far = sum(s >= eer_thresh for s in stranger_max_sims) / len(stranger_max_sims) * 100.0
+    # ── STAGE 1: Uncertainty Rejection (nếu có logvar) ────────────────────
+    stage1_far = 0.0
+    stage1_frr = 0.0
+    unc_eer = 0.0
+    unc_thresh = 0.0
+    known_unc_list = []
+    str_unc_list = []
 
-    # ── FRR: tỷ lệ known probe bị reject (genuine sim < ngưỡng) ─────────────
-    frr = sum(s < eer_thresh  for s in genuine_scores)   / len(genuine_scores)   * 100.0
+    if known_logvar is not None and stranger_logvar is not None:
+        # Uncertainty = mean(exp(logvar))
+        known_unc = torch.exp(known_logvar).mean(dim=1).cpu().tolist()
+        str_unc   = torch.exp(stranger_logvar).mean(dim=1).cpu().tolist()
+        known_unc_list = known_unc
+        str_unc_list   = str_unc
+
+        # Tìm ngưỡng uncertainty (bằng cách xem known là genuine, str là impostor)
+        # Đổi dấu vì calculate_eer kỳ vọng genuine CAO HƠN impostor.
+        unc_eer, neg_unc_thresh = calculate_eer([-u for u in known_unc], [-u for u in str_unc])
+        unc_thresh = -neg_unc_thresh
+
+        # Lọc Stage 1 (những mẫu có unc <= unc_thresh mới được đi tiếp vào Stage 2)
+        passed_str_sims = [s for s, u in zip(stranger_max_sims, str_unc) if u <= unc_thresh]
+        passed_gen_sims = [s for s, u in zip(genuine_scores, known_unc) if u <= unc_thresh]
+
+        # Tính toán FAR/FRR kết hợp cả 2 Stage
+        far_count = sum(s >= eer_thresh for s in passed_str_sims)
+        far = (far_count / len(stranger_max_sims)) * 100.0 if len(stranger_max_sims) > 0 else 0.0
+
+        rejected_stage1 = sum(u > unc_thresh for u in known_unc)
+        rejected_stage2 = sum(s < eer_thresh for s in passed_gen_sims)
+        frr = ((rejected_stage1 + rejected_stage2) / len(genuine_scores)) * 100.0 if len(genuine_scores) > 0 else 0.0
+
+        stage1_far = (sum(u <= unc_thresh for u in str_unc) / len(str_unc)) * 100.0
+        stage1_frr = (rejected_stage1 / len(known_unc)) * 100.0
+    else:
+        # ── FAR: tỷ lệ stranger vượt ngưỡng (bị nhận nhầm) ────────────────────
+        far = sum(s >= eer_thresh for s in stranger_max_sims) / len(stranger_max_sims) * 100.0
+
+        # ── FRR: tỷ lệ known probe bị reject (genuine sim < ngưỡng) ─────────────
+        frr = sum(s < eer_thresh  for s in genuine_scores)   / len(genuine_scores)   * 100.0
 
     return {
         "open_set_rank1":   open_set_rank1,
@@ -543,8 +664,16 @@ def evaluate_open_set(gallery: dict,
         "frr":              frr,
         "eer":              eer_val,
         "eer_threshold":    eer_thresh,
+        "unc_eer":          unc_eer,
+        "unc_threshold":    unc_thresh,
+        "kl_eer":           kl_eer,
+        "kl_threshold":     kl_thresh if kl_thresh else 0.0,
+        "stage1_far":       stage1_far,
+        "stage1_frr":       stage1_frr,
         "genuine_scores":   genuine_scores,
         "stranger_max_sims": stranger_max_sims,
+        "known_unc":        known_unc_list,
+        "stranger_unc":     str_unc_list,
         "mean_genuine":     float(np.mean(genuine_scores)),
         "mean_stranger":    float(np.mean(stranger_max_sims)),
         "n_known_probe":    len(known_labels_dev),
@@ -635,6 +764,28 @@ def plot_score_distribution(genuine: list, impostor: list,
         logger.info(f"Saved score distribution: {save_path}")
 
 
+def plot_uncertainty_distribution(known_unc: list, stranger_unc: list,
+                                  eer: float, thresh: float,
+                                  title: str, save_path: str,
+                                  logger: logging.Logger = None):
+    """Vẽ phân phối Uncertainty cho Known và Stranger."""
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.hist(stranger_unc, bins=80, color="#e74c3c", alpha=0.6, label="Stranger (Out-of-Distribution)", density=True)
+    ax.hist(known_unc,    bins=80, color="#2ecc71", alpha=0.6, label="Known Probe",  density=True)
+    ax.axvline(thresh, color="#e67e22", linestyle="--", linewidth=1.6,
+               label=f"Uncertainty thresh={thresh:.4f}  (EER={eer:.2f}%)")
+    ax.set_title(title, fontsize=13, pad=10)
+    ax.set_xlabel("Uncertainty Score (mean exp(logvar))")
+    ax.set_ylabel("Density")
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+    if logger:
+        logger.info(f"Saved uncertainty distribution: {save_path}")
+
+
 def plot_openset_score_distribution(genuine: list, impostor: list, stranger_max: list,
                                     eer: float, thresh: float,
                                     title: str, save_path: str,
@@ -696,7 +847,7 @@ def main(cfg: DictConfig):
     tsne_perp     = eval_cfg.get("tsne_perplexity", 30)
 
     # ── Tên run để đặt tên folder ──────────────────────────────────────────────
-    MODE_NAME = {0: "baseline", 1: "opt_proj", 2: "opt_latent"}
+    MODE_NAME = {0: "baseline", 1: "opt_proj", 2: "opt_latent", 3: "baseline_mu", 4: "opt_latent_mu"}
     run_name = f"mode{mode}_{MODE_NAME.get(mode,'custom')}_{neg_strategy}"
 
     # ── Load model ─────────────────────────────────────────────────────────────
@@ -758,9 +909,14 @@ def main(cfg: DictConfig):
             ref_images=reg_ref,
         )
 
+        # ── Chọn vector eval theo mode ────────────────────────────────────
+        is_mu_mode = (mode in [3, 4])
+        prob_eval = prob_mu if is_mu_mode else prob_proj
+        str_eval  = str_mu  if is_mu_mode else str_proj
+
         # ── STEP 3a: Closed-set eval trên known probe ─────────────────────
         logger.info("--- STEP 3a: Closed-set evaluation on known probe ---")
-        closed_results = evaluate_gallery(gallery, prob_proj, prob_labels, device)
+        closed_results = evaluate_gallery(gallery, prob_eval, prob_labels, device)
 
         logger.info("=" * 60)
         logger.info("  [Closed-Set — Known Probe Only]")
@@ -775,17 +931,22 @@ def main(cfg: DictConfig):
         logger.info("--- STEP 3b: Open-set evaluation with stranger ---")
         open_results = evaluate_open_set(
             gallery,
-            prob_proj, prob_labels,
-            str_proj,  str_labels,
+            prob_eval, prob_labels,
+            str_eval,  str_labels,
             device,
             eer_thresh=closed_results["eer_threshold"],
+            known_mu=prob_mu, known_logvar=prob_logvar,
+            stranger_mu=str_mu, stranger_logvar=str_logvar,
         )
 
         logger.info("=" * 60)
-        logger.info("  [Open-Set — Known + Stranger]")
+        logger.info("  [Open-Set — Known + Stranger (2-Stage Rejection)]")
         logger.info(f"  Open-Set Rank-1 : {open_results['open_set_rank1']:.2f}%")
-        logger.info(f"  FAR (stranger)  : {open_results['far']:.2f}%   — stranger bị nhận nhầm")
-        logger.info(f"  FRR (known)     : {open_results['frr']:.2f}%   — known bị reject sai")
+        logger.info(f"  KL-Gate EER     : {open_results.get('kl_eer', 0.0):.2f}% (thresh={open_results.get('kl_threshold', 0.0):.4f})")
+        logger.info(f"  Uncertainty EER : {open_results['unc_eer']:.2f}% (thresh={open_results['unc_threshold']:.4f})")
+        logger.info(f"  Stage-1 FRR     : {open_results['stage1_frr']:.2f}%   - known bi reject boi Uncertainty")
+        logger.info(f"  FAR (stranger)  : {open_results['far']:.2f}%   - stranger bi nhan nham (da qua 2 vong)")
+        logger.info(f"  FRR (known)     : {open_results['frr']:.2f}%   - known bi reject sai (tong hop)")
         logger.info(f"  EER (open-set)  : {open_results['eer']:.2f}%  (thresh={open_results['eer_threshold']:.4f})")
         logger.info(f"  Mean Genuine    : {open_results['mean_genuine']:.4f}")
         logger.info(f"  Mean Stranger   : {open_results['mean_stranger']:.4f}")
@@ -811,7 +972,7 @@ def main(cfg: DictConfig):
         logger.info(f"Saved results: {results_path}")
 
         # ── STEP 4: Open-Set Score Distribution ───────────────────────────
-        logger.info("--- STEP 4: Visualizing open-set score distribution ---")
+        logger.info("--- STEP 4: Visualizing open-set score & uncertainty distribution ---")
         plot_openset_score_distribution(
             genuine      = open_results["genuine_scores"],
             impostor     = closed_results.get("impostor_scores", []),
@@ -825,6 +986,18 @@ def main(cfg: DictConfig):
             save_path    = os.path.join(output_dir, "score_distribution_openset.png"),
             logger       = logger,
         )
+
+        if open_results.get("known_unc") and open_results.get("stranger_unc"):
+            plot_uncertainty_distribution(
+                known_unc    = open_results["known_unc"],
+                stranger_unc = open_results["stranger_unc"],
+                eer          = open_results["unc_eer"],
+                thresh       = open_results["unc_threshold"],
+                title        = (f"Uncertainty Distribution [{run_name}]\n"
+                                f"Stage-1 FRR={open_results['stage1_frr']:.2f}%"),
+                save_path    = os.path.join(output_dir, "uncertainty_distribution_openset.png"),
+                logger       = logger,
+            )
 
         # ── STEP 5: t-SNE ─────────────────────────────────────────────────
         logger.info("--- STEP 5: t-SNE visualization ---")

@@ -53,6 +53,12 @@ class IITDDataset(BaseDataset):
         left_files  = self._get_files(self.left_dir)
         right_files = self._get_files(self.right_dir)
 
+        hand_filter = self.config.get('hand_filter', 'both')
+        if hand_filter == 'left':
+            right_files = []
+        elif hand_filter == 'right':
+            left_files = []
+
         if self.split_mode == 'hand':
             # Kịch bản 1: Left = train, Right = val
             target_dir = self.left_dir if self.is_train else self.right_dir
@@ -114,7 +120,7 @@ class IITDDataset(BaseDataset):
         num_known    = self.config.get('num_known_persons', 40)
         num_stranger = self.config.get('num_stranger_persons', None)
         reg_ratio    = self.config.get('register_ratio', 0.5)
-        cur_split    = self.config.get('split', 'train')
+        cur_split    = self.config.get('split', 'train' if self.is_train else 'val')
 
         # ── Xây dựng person_dict: pid_str -> [paths] ──────────────────────
         person_dict = defaultdict(list)
@@ -182,8 +188,15 @@ class IITDDataset(BaseDataset):
                     self.samples.append((path, new_label))
 
         elif cur_split == 'stranger':
-            # Z người lạ: toàn bộ ảnh
+            # Z người stranger: toàn bộ làm impostor/probe
             for pid in sorted(stranger_persons):
+                new_label = pid_to_label[pid]
+                for path in sorted(person_dict[pid]):
+                    self.samples.append((path, new_label))
+
+        elif cur_split == 'val':
+            # Gom chung register, probe, stranger để visualization
+            for pid in sorted(known_persons) + sorted(stranger_persons):
                 new_label = pid_to_label[pid]
                 for path in sorted(person_dict[pid]):
                     self.samples.append((path, new_label))
@@ -191,7 +204,7 @@ class IITDDataset(BaseDataset):
         else:
             raise ValueError(
                 f"Unknown split='{cur_split}' cho person mode. "
-                f"Hợp lệ: 'train', 'register', 'probe', 'stranger'."
+                f"Hợp lệ: 'train', 'register', 'probe', 'stranger', 'val'."
             )
 
     def __len__(self):

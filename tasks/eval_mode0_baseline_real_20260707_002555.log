@@ -1,0 +1,48 @@
+2026-07-07 00:25:55,776 [INFO] [Eval] mode=0 | neg_strategy=real | device=cpu
+2026-07-07 00:25:55,777 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+2026-07-07 00:25:59,154 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
+2026-07-07 00:25:59,159 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-07 00:25:59,296 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real
+2026-07-07 00:25:59,297 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-07 00:26:00,149 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-07 00:29:38,275 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_register.pt
+2026-07-07 00:32:00,096 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_probe.pt
+2026-07-07 00:35:54,659 [INFO] Saved feature cache (+ 31 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_stranger.pt
+2026-07-07 00:35:54,776 [INFO] Register : 1911 samples, 40 identities
+2026-07-07 00:35:54,778 [INFO] Probe    : 1936 samples, 40 identities
+2026-07-07 00:35:54,779 [INFO] Stranger : 2945 samples, 31 identities
+2026-07-07 00:35:54,780 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-07 00:35:54,783 [INFO] Building gallery: Mode=0, neg_strategy='real', 40 identities
+2026-07-07 00:35:54,881 [INFO] Saved gallery cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\gallery.pt
+2026-07-07 00:35:54,883 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-07 00:35:55,147 [INFO] ============================================================
+2026-07-07 00:35:55,147 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-07 00:35:55,149 [INFO]   Rank-1 Accuracy : 33.88%
+2026-07-07 00:35:55,149 [INFO]   EER             : 25.27%  (thresh=0.2892)
+2026-07-07 00:35:55,150 [INFO]   Mean Genuine    : 0.4482
+2026-07-07 00:35:55,151 [INFO]   Mean Impostor   : 0.2112
+2026-07-07 00:35:55,151 [INFO]   Probe count     : 1936
+2026-07-07 00:35:55,152 [INFO] ============================================================
+2026-07-07 00:35:55,152 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-07 00:35:55,253 [INFO] ============================================================
+2026-07-07 00:35:55,253 [INFO]   [Open-Set — Known + Stranger]
+2026-07-07 00:35:55,254 [INFO]   Open-Set Rank-1 : 33.88%
+2026-07-07 00:35:55,254 [INFO]   FAR (stranger)  : 99.97%   — stranger bị nhận nhầm
+2026-07-07 00:35:55,449 [INFO]   FRR (known)     : 25.26%   — known bị reject sai
+2026-07-07 00:35:55,453 [INFO]   EER (open-set)  : 59.45%  (thresh=0.2892)
+2026-07-07 00:35:55,453 [INFO]   Mean Genuine    : 0.4482
+2026-07-07 00:35:55,454 [INFO]   Mean Stranger   : 0.4939
+2026-07-07 00:35:55,454 [INFO]   Known probe     : 1936 | Stranger: 2945
+2026-07-07 00:35:55,455 [INFO] ============================================================
+2026-07-07 00:35:55,989 [INFO] Saved results: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\results.json
+2026-07-07 00:35:55,989 [INFO] --- STEP 4: Visualizing open-set score distribution ---
+2026-07-07 00:35:58,465 [INFO] Saved open-set score distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\score_distribution_openset.png
+2026-07-07 00:35:58,466 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-07 00:35:58,472 [INFO] Running t-SNE (6792 points, perplexity=30)...
+2026-07-07 00:37:00,936 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\tsne_proj.png
+2026-07-07 00:37:00,939 [INFO] Running t-SNE (6792 points, perplexity=30)...
+2026-07-07 00:37:42,630 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\tsne_mu.png
+2026-07-07 00:37:42,630 [INFO] 
+2026-07-07 00:37:42,631 [INFO] All outputs saved to: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real
+2026-07-07 00:37:42,631 [INFO] Log file: tasks\eval_mode0_baseline_real_20260707_002555.log
+2026-07-07 00:37:42,632 [INFO] Done.

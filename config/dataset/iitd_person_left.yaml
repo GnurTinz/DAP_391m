@@ -1,0 +1,32 @@
+name: "iitd"
+data_dir: "data/IITD Palmprint V1/Segmented"
+image_size: [150, 150]
+channels: 3
+
+# Chỉ lấy tập ảnh lòng bàn tay trái để đảm bảo chính xác cho Open-set
+hand_filter: "left"
+
+# ── Chế độ Person: Chia theo số người ────────────────────────────
+# Phù hợp cho đánh giá Open-Set Recognition chuẩn
+# X người Train, Y người Known (register+probe), Z người Stranger
+split_mode: "person"
+seed: 42
+
+# Số người cho mỗi nhóm (tổng IITD ~230 người)
+num_train_persons: 160      # X: người dùng để train embedding
+num_known_persons: 40       # Y: người known (register + probe)
+num_stranger_persons: 30    # Z: người lạ (impostor); null → dùng toàn bộ còn lại
+
+# Tỷ lệ ảnh của Y người dùng làm gallery (register), phần còn lại làm probe
+# Ví dụ: 0.5 → 50% đầu làm gallery, 50% sau làm probe
+register_ratio: 0.5
+
+transforms:
+  random_grayscale: 0.5
+  random_rotation: 15
+  color_jitter:
+    brightness: 0.2
+    contrast: 0.2
+  random_affine:
+    translate: [0.1, 0.1]
+    scale: [0.9, 1.1]

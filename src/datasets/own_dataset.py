@@ -89,7 +89,7 @@ class OwnDataset(BaseDataset):
         num_known    = self.config.get('num_known_persons', 5)
         num_stranger = self.config.get('num_stranger_persons', None)
         reg_ratio    = self.config.get('register_ratio', 0.5)
-        cur_split    = self.config.get('split', 'train')
+        cur_split    = self.config.get('split', 'train' if self.is_train else 'val')
         seed         = self.config.get('seed', 42)
         hand_filter  = self.config.get('hand_filter', 'both')
         
@@ -156,6 +156,11 @@ class OwnDataset(BaseDataset):
                     self.samples.append((path, new_label))
         elif cur_split == 'stranger':
             for pid in sorted(stranger_persons):
+                new_label = pid_to_label[pid]
+                for path in sorted(person_dict[pid]):
+                    self.samples.append((path, new_label))
+        elif cur_split == 'val':
+            for pid in sorted(known_persons) + sorted(stranger_persons):
                 new_label = pid_to_label[pid]
                 for path in sorted(person_dict[pid]):
                     self.samples.append((path, new_label))

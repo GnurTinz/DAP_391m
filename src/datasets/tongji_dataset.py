@@ -107,7 +107,7 @@ class TongjiDataset(BaseDataset):
         num_known    = self.config.get('num_known_persons', 100)
         num_stranger = self.config.get('num_stranger_persons', None)
         reg_ratio    = self.config.get('register_ratio', 0.5)
-        cur_split    = self.config.get('split', 'train')
+        cur_split    = self.config.get('split', 'train' if self.is_train else 'val')
 
         # ── Xây dựng person_dict: orig_label_int -> [paths] ───────────────
         # Tongji: cứ 10 file liên tiếp (sorted) = 1 người
@@ -179,10 +179,16 @@ class TongjiDataset(BaseDataset):
                 for path in person_dict[orig_label]:
                     self.samples.append((path, new_label))
 
+        elif cur_split == 'val':
+            for orig_label in sorted(known_persons) + sorted(stranger_persons):
+                new_label = pid_to_label[orig_label]
+                for path in person_dict[orig_label]:
+                    self.samples.append((path, new_label))
+
         else:
             raise ValueError(
                 f"Unknown split='{cur_split}' cho person mode. "
-                f"Hợp lệ: 'train', 'register', 'probe', 'stranger'."
+                f"Hợp lệ: 'train', 'register', 'probe', 'stranger', 'val'."
             )
 
     def __len__(self):
