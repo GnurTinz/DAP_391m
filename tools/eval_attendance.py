@@ -624,6 +624,8 @@ def evaluate_open_set(gallery: dict,
     unc_thresh = 0.0
     known_unc_list = []
     str_unc_list = []
+    known_sigma_list = []
+    str_sigma_list = []
 
     if known_logvar is not None and stranger_logvar is not None:
         # Uncertainty = mean(exp(logvar))
@@ -631,6 +633,11 @@ def evaluate_open_set(gallery: dict,
         str_unc   = torch.exp(stranger_logvar).mean(dim=1).cpu().tolist()
         known_unc_list = known_unc
         str_unc_list   = str_unc
+
+        known_sigma = torch.exp(0.5 * known_logvar).mean(dim=1).cpu().tolist()
+        str_sigma   = torch.exp(0.5 * stranger_logvar).mean(dim=1).cpu().tolist()
+        known_sigma_list = known_sigma
+        str_sigma_list   = str_sigma
 
         # Tìm ngưỡng uncertainty (bằng cách xem known là genuine, str là impostor)
         # Đổi dấu vì calculate_eer kỳ vọng genuine CAO HƠN impostor.
@@ -674,6 +681,8 @@ def evaluate_open_set(gallery: dict,
         "stranger_max_sims": stranger_max_sims,
         "known_unc":        known_unc_list,
         "stranger_unc":     str_unc_list,
+        "known_sigma":      known_sigma_list,
+        "stranger_sigma":   str_sigma_list,
         "mean_genuine":     float(np.mean(genuine_scores)),
         "mean_stranger":    float(np.mean(stranger_max_sims)),
         "n_known_probe":    len(known_labels_dev),
@@ -784,6 +793,25 @@ def plot_uncertainty_distribution(known_unc: list, stranger_unc: list,
     plt.close(fig)
     if logger:
         logger.info(f"Saved uncertainty distribution: {save_path}")
+
+
+def plot_sigma_distribution(known_sigma: list, stranger_sigma: list,
+                            title: str, save_path: str,
+                            logger: logging.Logger = None):
+    """Vẽ phân phối Sigma cho Known và Stranger."""
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.hist(stranger_sigma, bins=80, color="#e74c3c", alpha=0.6, label="Stranger (Out-of-Distribution)", density=True)
+    ax.hist(known_sigma,    bins=80, color="#2ecc71", alpha=0.6, label="Known Probe",  density=True)
+    ax.set_title(title, fontsize=13, pad=10)
+    ax.set_xlabel("Sigma Score (mean exp(0.5 * logvar))")
+    ax.set_ylabel("Density")
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+    if logger:
+        logger.info(f"Saved sigma distribution: {save_path}")
 
 
 def plot_openset_score_distribution(genuine: list, impostor: list, stranger_max: list,
@@ -996,6 +1024,15 @@ def main(cfg: DictConfig):
                 title        = (f"Uncertainty Distribution [{run_name}]\n"
                                 f"Stage-1 FRR={open_results['stage1_frr']:.2f}%"),
                 save_path    = os.path.join(output_dir, "uncertainty_distribution_openset.png"),
+                logger       = logger,
+            )
+
+        if open_results.get("known_sigma") and open_results.get("stranger_sigma"):
+            plot_sigma_distribution(
+                known_sigma  = open_results["known_sigma"],
+                stranger_sigma = open_results["stranger_sigma"],
+                title        = f"Sigma Distribution [{run_name}]",
+                save_path    = os.path.join(output_dir, "sigma_distribution_openset.png"),
                 logger       = logger,
             )
 

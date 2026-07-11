@@ -1,0 +1,8 @@
+2026-07-11 20:39:18,750 [INFO] [Eval] mode=0 | neg_strategy=real | device=cpu
+2026-07-11 20:39:18,751 [INFO] Reading model config from E:/palm/logs/Unet_Palmnet_own_iitd_tongji/logs/version_0\config_backup.yaml
+2026-07-11 20:39:20,490 [INFO] Loaded checkpoint: E:\palm\logs\Unet_Palmnet_own_iitd_tongji\logs\version_0\checkpoints\last.ckpt
+2026-07-11 20:39:20,496 [INFO] Frozen 18 BatchNorm layer(s) into eval mode.
+2026-07-11 20:39:20,574 [INFO] Output directory: E:/palm/logs/Unet_Palmnet_own_iitd_tongji/logs/version_0\eval\mode0_baseline_real
+2026-07-11 20:39:20,574 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-11 20:39:21,375 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-11 20:40:38,802 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/Unet_Palmnet_own_iitd_tongji/logs/version_0\eval\feats_register.pt

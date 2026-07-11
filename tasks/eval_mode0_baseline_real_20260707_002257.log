@@ -1,7 +1,0 @@
-2026-07-07 00:22:57,880 [INFO] [Eval] mode=0 | neg_strategy=real | device=cpu
-2026-07-07 00:22:57,881 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
-2026-07-07 00:23:01,768 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
-2026-07-07 00:23:01,773 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
-2026-07-07 00:23:01,931 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real
-2026-07-07 00:23:01,932 [INFO] Building dataloader: gallery_split='val', probe_split='test'
-2026-07-07 00:23:02,027 [INFO] --- STEP 1: Extracting features ---
