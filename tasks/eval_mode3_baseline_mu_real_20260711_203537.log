@@ -44,3 +44,10 @@
 2026-07-11 20:41:16,874 [INFO] Saved sigma distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\sigma_distribution_openset.png
 2026-07-11 20:41:16,874 [INFO] --- STEP 5: t-SNE visualization ---
 2026-07-11 20:41:16,879 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:41:49,055 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\tsne_proj.png
+2026-07-11 20:41:49,056 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:42:15,387 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\tsne_mu.png
+2026-07-11 20:42:15,388 [INFO] 
+2026-07-11 20:42:15,388 [INFO] All outputs saved to: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real
+2026-07-11 20:42:15,389 [INFO] Log file: tasks\eval_mode3_baseline_mu_real_20260711_203537.log
+2026-07-11 20:42:15,389 [INFO] Done.

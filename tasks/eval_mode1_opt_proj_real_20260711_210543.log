@@ -1,0 +1,53 @@
+2026-07-11 21:05:43,061 [INFO] [Eval] mode=1 | neg_strategy=real | device=cpu
+2026-07-11 21:05:43,066 [INFO] Reading model config from E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\config_backup.yaml
+2026-07-11 21:05:44,974 [INFO] Loaded checkpoint: E:\palm\logs\UnetPalmModel_Resnet18_version_32_Original_KL1\version_32\checkpoints\last.ckpt
+2026-07-11 21:05:44,980 [INFO] Frozen 35 BatchNorm layer(s) into eval mode.
+2026-07-11 21:05:44,984 [INFO] Output directory: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real
+2026-07-11 21:05:44,985 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-11 21:05:45,589 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-11 21:07:07,372 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\feats_register.pt
+2026-07-11 21:08:31,891 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\feats_probe.pt
+2026-07-11 21:10:02,781 [INFO] Saved feature cache (+ 31 ref images): E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\feats_stranger.pt
+2026-07-11 21:10:02,875 [INFO] Register : 962 samples, 40 identities
+2026-07-11 21:10:02,878 [INFO] Probe    : 981 samples, 40 identities
+2026-07-11 21:10:02,879 [INFO] Stranger : 1462 samples, 31 identities
+2026-07-11 21:10:02,880 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-11 21:10:02,880 [INFO] Building gallery: Mode=1, neg_strategy='real', 40 identities
+2026-07-11 21:17:25,515 [INFO] Saved gallery cache: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\gallery.pt
+2026-07-11 21:17:25,516 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-11 21:17:25,568 [INFO] ============================================================
+2026-07-11 21:17:25,568 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-11 21:17:25,569 [INFO]   Rank-1 Accuracy : 81.14%
+2026-07-11 21:17:25,569 [INFO]   EER             : 6.91%  (thresh=0.1934)
+2026-07-11 21:17:25,570 [INFO]   Mean Genuine    : 0.4067
+2026-07-11 21:17:25,570 [INFO]   Mean Impostor   : -0.0035
+2026-07-11 21:17:25,571 [INFO]   Probe count     : 981
+2026-07-11 21:17:25,571 [INFO] ============================================================
+2026-07-11 21:17:25,572 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-11 21:17:26,424 [INFO] ============================================================
+2026-07-11 21:17:26,424 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-11 21:17:26,425 [INFO]   Open-Set Rank-1 : 79.61%
+2026-07-11 21:17:26,425 [INFO]   KL-Gate EER     : 16.91% (thresh=3.9187)
+2026-07-11 21:17:26,426 [INFO]   Uncertainty EER : 50.14% (thresh=0.5877)
+2026-07-11 21:17:26,426 [INFO]   Stage-1 FRR     : 50.15%   - known bi reject boi Uncertainty
+2026-07-11 21:17:26,426 [INFO]   FAR (stranger)  : 45.90%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-11 21:17:26,427 [INFO]   FRR (known)     : 52.70%   - known bi reject sai (tong hop)
+2026-07-11 21:17:26,427 [INFO]   EER (open-set)  : 27.42%  (thresh=0.1934)
+2026-07-11 21:17:26,427 [INFO]   Mean Genuine    : 0.3861
+2026-07-11 21:17:26,428 [INFO]   Mean Stranger   : 0.2788
+2026-07-11 21:17:26,428 [INFO]   Known probe     : 981 | Stranger: 1462
+2026-07-11 21:17:26,429 [INFO] ============================================================
+2026-07-11 21:17:26,645 [INFO] Saved results: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\results.json
+2026-07-11 21:17:26,645 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-11 21:17:27,761 [INFO] Saved open-set score distribution: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\score_distribution_openset.png
+2026-07-11 21:17:28,371 [INFO] Saved uncertainty distribution: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\uncertainty_distribution_openset.png
+2026-07-11 21:17:28,980 [INFO] Saved sigma distribution: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\sigma_distribution_openset.png
+2026-07-11 21:17:28,981 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-11 21:17:28,982 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 21:17:56,073 [INFO] Saved t-SNE plot: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\tsne_proj.png
+2026-07-11 21:17:56,074 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 21:18:31,008 [INFO] Saved t-SNE plot: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real\tsne_mu.png
+2026-07-11 21:18:31,008 [INFO] 
+2026-07-11 21:18:31,010 [INFO] All outputs saved to: E:/palm/logs/UnetPalmModel_Resnet18_version_32_Original_KL1/version_32\eval\mode1_opt_proj_real
+2026-07-11 21:18:31,011 [INFO] Log file: tasks\eval_mode1_opt_proj_real_20260711_210543.log
+2026-07-11 21:18:31,011 [INFO] Done.

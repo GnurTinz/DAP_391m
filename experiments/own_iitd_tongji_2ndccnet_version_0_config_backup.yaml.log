@@ -1,0 +1,233 @@
+============================================================
+TỔNG HỢP KẾT QUẢ CHO CONFIG: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+Random State (Seed) được chọn: 42
+Số lượng file log được gộp: 4
+============================================================
+
+
+================================================================================
+--- RUN INFO: eval_mode0_baseline_real_20260711_191552 ---
+================================================================================
+2026-07-11 19:15:52,560 [INFO] [Eval] mode=0 | neg_strategy=real | device=cpu
+2026-07-11 19:15:52,562 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+2026-07-11 19:15:56,067 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
+2026-07-11 19:15:56,075 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-11 19:15:56,185 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real
+2026-07-11 19:15:56,185 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-11 19:15:56,576 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-11 19:15:56,579 [INFO] Loading feature cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_register.pt
+2026-07-11 19:15:57,114 [INFO] Loading feature cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_probe.pt
+2026-07-11 19:15:57,690 [INFO] Loading feature cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_stranger.pt
+2026-07-11 19:15:58,144 [INFO] Register : 1911 samples, 40 identities
+2026-07-11 19:15:58,145 [INFO] Probe    : 1936 samples, 40 identities
+2026-07-11 19:15:58,145 [INFO] Stranger : 2945 samples, 31 identities
+2026-07-11 19:15:58,145 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-11 19:15:58,209 [INFO] Loading gallery cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\gallery.pt
+2026-07-11 19:15:58,209 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-11 19:15:58,362 [INFO] ============================================================
+2026-07-11 19:15:58,363 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-11 19:15:58,363 [INFO]   Rank-1 Accuracy : 33.88%
+2026-07-11 19:15:58,365 [INFO]   EER             : 25.27%  (thresh=0.2892)
+2026-07-11 19:15:58,365 [INFO]   Mean Genuine    : 0.4482
+2026-07-11 19:15:58,366 [INFO]   Mean Impostor   : 0.2112
+2026-07-11 19:15:58,366 [INFO]   Probe count     : 1936
+2026-07-11 19:15:58,366 [INFO] ============================================================
+2026-07-11 19:15:58,367 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-11 19:16:01,667 [INFO] ============================================================
+2026-07-11 19:16:01,667 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-11 19:16:01,667 [INFO]   Open-Set Rank-1 : 34.19%
+2026-07-11 19:16:01,667 [INFO]   KL-Gate EER     : 38.53% (thresh=27.9564)
+2026-07-11 19:16:01,667 [INFO]   Uncertainty EER : 53.51% (thresh=1.0000)
+2026-07-11 19:16:01,667 [INFO]   Stage-1 FRR     : 53.51%   - known bi reject boi Uncertainty
+2026-07-11 19:16:01,667 [INFO]   FAR (stranger)  : 52.87%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-11 19:16:01,671 [INFO]   FRR (known)     : 66.43%   - known bi reject sai (tong hop)
+2026-07-11 19:16:01,671 [INFO]   EER (open-set)  : 59.75%  (thresh=0.2892)
+2026-07-11 19:16:01,671 [INFO]   Mean Genuine    : 0.3520
+2026-07-11 19:16:01,672 [INFO]   Mean Stranger   : 0.4883
+2026-07-11 19:16:01,672 [INFO]   Known probe     : 1936 | Stranger: 2945
+2026-07-11 19:16:01,673 [INFO] ============================================================
+2026-07-11 19:16:01,965 [INFO] Saved results: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\results.json
+2026-07-11 19:16:01,965 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-11 19:16:03,135 [INFO] Saved open-set score distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\score_distribution_openset.png
+2026-07-11 19:16:03,705 [INFO] Saved uncertainty distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\uncertainty_distribution_openset.png
+2026-07-11 19:16:04,149 [INFO] Saved sigma distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\sigma_distribution_openset.png
+2026-07-11 19:16:04,149 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-11 19:16:04,153 [INFO] Running t-SNE (6792 points, perplexity=30)...
+2026-07-11 19:16:51,171 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\tsne_proj.png
+2026-07-11 19:16:51,172 [INFO] Running t-SNE (6792 points, perplexity=30)...
+2026-07-11 19:17:32,346 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real\tsne_mu.png
+2026-07-11 19:17:32,346 [INFO] 
+2026-07-11 19:17:32,347 [INFO] All outputs saved to: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode0_baseline_real
+2026-07-11 19:17:32,347 [INFO] Log file: tasks\eval_mode0_baseline_real_20260711_191552.log
+2026-07-11 19:17:32,347 [INFO] Done.
+
+================================================================================
+--- RUN INFO: eval_mode1_opt_proj_real_20260711_195856 ---
+================================================================================
+2026-07-11 19:58:56,646 [INFO] [Eval] mode=1 | neg_strategy=real | device=cpu
+2026-07-11 19:58:56,648 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+2026-07-11 19:59:04,267 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
+2026-07-11 19:59:04,271 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-11 19:59:04,418 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real
+2026-07-11 19:59:04,418 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-11 19:59:04,916 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-11 20:01:12,426 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_register.pt
+2026-07-11 20:03:05,228 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_probe.pt
+2026-07-11 20:05:33,927 [INFO] Saved feature cache (+ 31 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_stranger.pt
+2026-07-11 20:05:33,978 [INFO] Register : 962 samples, 40 identities
+2026-07-11 20:05:33,979 [INFO] Probe    : 981 samples, 40 identities
+2026-07-11 20:05:33,979 [INFO] Stranger : 1462 samples, 31 identities
+2026-07-11 20:05:33,979 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-11 20:05:33,982 [INFO] Building gallery: Mode=1, neg_strategy='real', 40 identities
+2026-07-11 20:11:39,005 [INFO] Saved gallery cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\gallery.pt
+2026-07-11 20:11:39,005 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-11 20:11:39,190 [INFO] ============================================================
+2026-07-11 20:11:39,190 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-11 20:11:39,192 [INFO]   Rank-1 Accuracy : 92.05%
+2026-07-11 20:11:39,192 [INFO]   EER             : 8.55%  (thresh=0.2363)
+2026-07-11 20:11:39,193 [INFO]   Mean Genuine    : 0.4037
+2026-07-11 20:11:39,193 [INFO]   Mean Impostor   : 0.0532
+2026-07-11 20:11:39,194 [INFO]   Probe count     : 981
+2026-07-11 20:11:39,194 [INFO] ============================================================
+2026-07-11 20:11:39,195 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-11 20:11:40,359 [INFO] ============================================================
+2026-07-11 20:11:40,361 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-11 20:11:40,362 [INFO]   Open-Set Rank-1 : 92.05%
+2026-07-11 20:11:40,362 [INFO]   KL-Gate EER     : 13.65% (thresh=21.6972)
+2026-07-11 20:11:40,363 [INFO]   Uncertainty EER : 51.76% (thresh=1.0000)
+2026-07-11 20:11:40,364 [INFO]   Stage-1 FRR     : 51.68%   - known bi reject boi Uncertainty
+2026-07-11 20:11:40,364 [INFO]   FAR (stranger)  : 27.22%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-11 20:11:40,367 [INFO]   FRR (known)     : 56.07%   - known bi reject sai (tong hop)
+2026-07-11 20:11:40,368 [INFO]   EER (open-set)  : 20.71%  (thresh=0.2363)
+2026-07-11 20:11:40,368 [INFO]   Mean Genuine    : 0.4015
+2026-07-11 20:11:40,369 [INFO]   Mean Stranger   : 0.2102
+2026-07-11 20:11:40,369 [INFO]   Known probe     : 981 | Stranger: 1462
+2026-07-11 20:11:40,370 [INFO] ============================================================
+2026-07-11 20:11:40,648 [INFO] Saved results: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\results.json
+2026-07-11 20:11:40,649 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-11 20:11:42,711 [INFO] Saved open-set score distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\score_distribution_openset.png
+2026-07-11 20:11:43,989 [INFO] Saved uncertainty distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\uncertainty_distribution_openset.png
+2026-07-11 20:11:45,207 [INFO] Saved sigma distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\sigma_distribution_openset.png
+2026-07-11 20:11:45,208 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-11 20:11:45,212 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:12:18,457 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\tsne_proj.png
+2026-07-11 20:12:18,458 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:12:44,017 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real\tsne_mu.png
+2026-07-11 20:12:44,019 [INFO] 
+2026-07-11 20:12:44,019 [INFO] All outputs saved to: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode1_opt_proj_real
+2026-07-11 20:12:44,019 [INFO] Log file: tasks\eval_mode1_opt_proj_real_20260711_195856.log
+2026-07-11 20:12:44,020 [INFO] Done.
+
+================================================================================
+--- RUN INFO: eval_mode2_opt_latent_real_20260711_201836 ---
+================================================================================
+2026-07-11 20:18:36,966 [INFO] [Eval] mode=2 | neg_strategy=real | device=cpu
+2026-07-11 20:18:36,966 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+2026-07-11 20:18:40,169 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
+2026-07-11 20:18:40,176 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-11 20:18:40,276 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real
+2026-07-11 20:18:40,276 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-11 20:18:40,653 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-11 20:20:17,906 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_register.pt
+2026-07-11 20:22:19,757 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_probe.pt
+2026-07-11 20:24:49,865 [INFO] Saved feature cache (+ 31 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_stranger.pt
+2026-07-11 20:24:49,921 [INFO] Register : 962 samples, 40 identities
+2026-07-11 20:24:49,921 [INFO] Probe    : 981 samples, 40 identities
+2026-07-11 20:24:49,921 [INFO] Stranger : 1462 samples, 31 identities
+2026-07-11 20:24:49,922 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-11 20:24:49,923 [INFO] Building gallery: Mode=2, neg_strategy='real', 40 identities
+2026-07-11 20:32:42,329 [INFO] Saved gallery cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\gallery.pt
+2026-07-11 20:32:42,330 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-11 20:32:42,444 [INFO] ============================================================
+2026-07-11 20:32:42,446 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-11 20:32:42,446 [INFO]   Rank-1 Accuracy : 87.97%
+2026-07-11 20:32:42,447 [INFO]   EER             : 10.59%  (thresh=0.2594)
+2026-07-11 20:32:42,447 [INFO]   Mean Genuine    : 0.4131
+2026-07-11 20:32:42,448 [INFO]   Mean Impostor   : 0.0823
+2026-07-11 20:32:42,448 [INFO]   Probe count     : 981
+2026-07-11 20:32:42,449 [INFO] ============================================================
+2026-07-11 20:32:42,449 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-11 20:32:43,441 [INFO] ============================================================
+2026-07-11 20:32:43,441 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-11 20:32:43,442 [INFO]   Open-Set Rank-1 : 88.99%
+2026-07-11 20:32:43,442 [INFO]   KL-Gate EER     : 13.65% (thresh=21.6972)
+2026-07-11 20:32:43,444 [INFO]   Uncertainty EER : 51.76% (thresh=1.0000)
+2026-07-11 20:32:43,444 [INFO]   Stage-1 FRR     : 51.68%   - known bi reject boi Uncertainty
+2026-07-11 20:32:43,445 [INFO]   FAR (stranger)  : 25.65%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-11 20:32:43,445 [INFO]   FRR (known)     : 56.78%   - known bi reject sai (tong hop)
+2026-07-11 20:32:43,446 [INFO]   EER (open-set)  : 22.60%  (thresh=0.2594)
+2026-07-11 20:32:43,446 [INFO]   Mean Genuine    : 0.4108
+2026-07-11 20:32:43,447 [INFO]   Mean Stranger   : 0.2253
+2026-07-11 20:32:43,447 [INFO]   Known probe     : 981 | Stranger: 1462
+2026-07-11 20:32:43,447 [INFO] ============================================================
+2026-07-11 20:32:43,719 [INFO] Saved results: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\results.json
+2026-07-11 20:32:43,720 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-11 20:32:45,286 [INFO] Saved open-set score distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\score_distribution_openset.png
+2026-07-11 20:32:46,253 [INFO] Saved uncertainty distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\uncertainty_distribution_openset.png
+2026-07-11 20:32:47,218 [INFO] Saved sigma distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\sigma_distribution_openset.png
+2026-07-11 20:32:47,220 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-11 20:32:47,222 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:33:16,608 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\tsne_proj.png
+2026-07-11 20:33:16,608 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:33:37,011 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real\tsne_mu.png
+2026-07-11 20:33:37,011 [INFO] 
+2026-07-11 20:33:37,012 [INFO] All outputs saved to: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode2_opt_latent_real
+2026-07-11 20:33:37,012 [INFO] Log file: tasks\eval_mode2_opt_latent_real_20260711_201836.log
+2026-07-11 20:33:37,012 [INFO] Done.
+
+================================================================================
+--- RUN INFO: eval_mode3_baseline_mu_real_20260711_203537 ---
+================================================================================
+2026-07-11 20:35:37,766 [INFO] [Eval] mode=3 | neg_strategy=real | device=cpu
+2026-07-11 20:35:37,766 [INFO] Reading model config from E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\config_backup.yaml
+2026-07-11 20:35:40,526 [INFO] Loaded checkpoint: E:\palm\logs\own_iitd_tongji_2ndccnet\version_0\checkpoints\last.ckpt
+2026-07-11 20:35:40,529 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-11 20:35:40,576 [INFO] Output directory: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real
+2026-07-11 20:35:40,576 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-11 20:35:40,866 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-11 20:37:07,558 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_register.pt
+2026-07-11 20:38:45,613 [INFO] Saved feature cache (+ 40 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_probe.pt
+2026-07-11 20:41:11,624 [INFO] Saved feature cache (+ 31 ref images): E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\feats_stranger.pt
+2026-07-11 20:41:11,690 [INFO] Register : 962 samples, 40 identities
+2026-07-11 20:41:11,690 [INFO] Probe    : 981 samples, 40 identities
+2026-07-11 20:41:11,691 [INFO] Stranger : 1462 samples, 31 identities
+2026-07-11 20:41:11,691 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-11 20:41:11,692 [INFO] Building gallery: Mode=3, neg_strategy='real', 40 identities
+2026-07-11 20:41:11,759 [INFO] Saved gallery cache: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\gallery.pt
+2026-07-11 20:41:11,759 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-11 20:41:11,849 [INFO] ============================================================
+2026-07-11 20:41:11,850 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-11 20:41:11,850 [INFO]   Rank-1 Accuracy : 94.60%
+2026-07-11 20:41:11,851 [INFO]   EER             : 3.39%  (thresh=0.4565)
+2026-07-11 20:41:11,851 [INFO]   Mean Genuine    : 0.7717
+2026-07-11 20:41:11,852 [INFO]   Mean Impostor   : 0.1806
+2026-07-11 20:41:11,852 [INFO]   Probe count     : 981
+2026-07-11 20:41:11,853 [INFO] ============================================================
+2026-07-11 20:41:11,853 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-11 20:41:13,121 [INFO] ============================================================
+2026-07-11 20:41:13,124 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-11 20:41:13,124 [INFO]   Open-Set Rank-1 : 94.60%
+2026-07-11 20:41:13,125 [INFO]   KL-Gate EER     : 13.65% (thresh=21.6972)
+2026-07-11 20:41:13,125 [INFO]   Uncertainty EER : 51.76% (thresh=1.0000)
+2026-07-11 20:41:13,126 [INFO]   Stage-1 FRR     : 51.68%   - known bi reject boi Uncertainty
+2026-07-11 20:41:13,126 [INFO]   FAR (stranger)  : 33.86%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-11 20:41:13,127 [INFO]   FRR (known)     : 53.21%   - known bi reject sai (tong hop)
+2026-07-11 20:41:13,127 [INFO]   EER (open-set)  : 11.33%  (thresh=0.4565)
+2026-07-11 20:41:13,129 [INFO]   Mean Genuine    : 0.7702
+2026-07-11 20:41:13,129 [INFO]   Mean Stranger   : 0.4424
+2026-07-11 20:41:13,130 [INFO]   Known probe     : 981 | Stranger: 1462
+2026-07-11 20:41:13,130 [INFO] ============================================================
+2026-07-11 20:41:13,390 [INFO] Saved results: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\results.json
+2026-07-11 20:41:13,391 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-11 20:41:15,371 [INFO] Saved open-set score distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\score_distribution_openset.png
+2026-07-11 20:41:16,248 [INFO] Saved uncertainty distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\uncertainty_distribution_openset.png
+2026-07-11 20:41:16,874 [INFO] Saved sigma distribution: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\sigma_distribution_openset.png
+2026-07-11 20:41:16,874 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-11 20:41:16,879 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:41:49,055 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\tsne_proj.png
+2026-07-11 20:41:49,056 [INFO] Running t-SNE (3405 points, perplexity=30)...
+2026-07-11 20:42:15,387 [INFO] Saved t-SNE plot: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real\tsne_mu.png
+2026-07-11 20:42:15,388 [INFO] 
+2026-07-11 20:42:15,388 [INFO] All outputs saved to: E:/palm/logs/own_iitd_tongji_2ndccnet/version_0\eval\mode3_baseline_mu_real
+2026-07-11 20:42:15,389 [INFO] Log file: tasks\eval_mode3_baseline_mu_real_20260711_203537.log
+2026-07-11 20:42:15,389 [INFO] Done.
