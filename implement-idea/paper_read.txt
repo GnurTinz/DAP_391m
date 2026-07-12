@@ -12,7 +12,6 @@
 [12] https://proceedings.neurips.cc/paper_files/paper/2021/file/0496604c1d80f66fbeb963c12e570a26-Paper.pdf
 [13] http://arxiv.org/abs/1806.05034
 [14] https://arxiv.org/abs/2206.00050
-[15] https://arxiv.org/abs/1806.05034
 [16] https://arxiv.org/pdf/2003.11339
 [17] https://arxiv.org/pdf/1904.09658
 [18] https://openaccess.thecvf.com/content_ECCV_2018/papers/Xudong_Lin_Deep_Variational_Metric_ECCV_2018_paper.pdf
