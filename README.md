@@ -1,114 +1,91 @@
-# Uncertainty-Aware Probabilistic PalmPrint Verification for Open-Set Attendance
+# Probabilistic Palmprint Embedding with Generative Regularization for Open-Set Identification
 
-Dự án nghiên cứu và phát triển hệ thống điểm danh bằng lòng bàn tay (**PalmPrint Attendance**) hướng tới bối cảnh mở (**Open-Set Biometric Verification**). Hệ thống không chỉ nhận diện chính xác danh tính các thành viên đã đăng ký (Closed-set), mà còn tối ưu hóa khả năng từ chối người dùng chưa hợp lệ (Unknown), giảm tỷ lệ nhận nhầm (**False Accept Rate - FAR**), và tự động ước lượng độ tin cậy của ảnh thông qua cơ chế phân phối không gian ẩn xác suất (**Probabilistic Latent Space**).
+This repository contains the implementation for the paper **"Probabilistic Palmprint Embedding with Generative Regularization for Open-Set Identification"**.
 
----
+## Authors
+- **Tung Le** (tungln4@fpt.edu.vn)
+- **Thu Le** (thulvm@fpt.edu.vn)
+- **Lam N.D.B** (lam01662052827@gmail.com)
+- **Tin Tran Trung** (trungtin1218@gmail.com)
+- **Thinh Nguyen Cong** (nguyencongthinh17122006@gmail.com)
+- **Thang Vo Hieu** (thanhtuan21062000@gmail.com)
 
-## 📌 Các Tính Năng Cốt Lõi (Key Features)
+*FPT University, Ho Chi Minh City, Vietnam*
 
-1. **Định Vị & Trích Chọn ROI Tự Động**: Tích hợp giải pháp **MediaPipe Hand Landmarker** để cắt vùng lòng bàn tay (ROI) ổn định dưới các góc chụp khác nhau.
-2. **Biểu Diễn Không Gian Ẩn Xác Suất (Probabilistic Embedding)**: Mỗi ảnh không bị ép vào một vector cố định, mà được mô hình hóa bằng một phân phối Gaussian:
-   $$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$
-   - $\boldsymbol{\mu}$: Đặc trưng định danh (Identity signal).
-   - $\boldsymbol{\sigma}$: Độ bất định (Uncertainty) hoặc độ mơ hồ của mẫu ảnh đầu vào.
-3. **Chiến Lược Học Tương Phản (Supervised Contrastive Learning)**: Tối ưu không gian đặc trưng bằng cách kéo gần các mẫu cùng danh tính và đẩy xa mẫu khác danh tính.
-4. **Hydra Configuration**: Toàn bộ hệ thống được quản lý cấu hình bằng siêu khung `Hydra`, cho phép thay đổi cấu hình linh hoạt qua file YAML và tham số dòng lệnh mà không cần sửa code.
-5. **Auto Logging & Versioning**: Tích hợp chặt chẽ với PyTorch Lightning, mọi kết quả huấn luyện, test, sinh ảnh, file checkpoint và ảnh preview sau mỗi Epoch đều được quản lý sạch sẽ và tự động trong thư mục `logs/version_X`.
+## Abstract
 
----
+Open-set palmprint identification must identify enrolled subjects from imperfect images and reject subjects not in the gallery. We propose a solution where the Region of Interest (ROI) of each palmprint is modeled as a **diagonal Gaussian distribution**.
+- **Mean:** Acts as the identity representation.
+- **Variance:** Provides an input-dependent estimate of aleatoric uncertainty.
 
-## 📂 Cấu Trúc Thư Mục Dự Án (Project Structure)
+During training, an auxiliary **U-Net decoder** is conditioned on a stochastic sample from this distribution. This encourages the latent representation to retain information about palm-line structure and is dropped at inference time. The total training loss is composed of angular-margin classification, covariance regularization, image reconstruction, and heteroscedastic uncertainty calibration.
+
+For open-set decisions, we consider similarity, probe uncertainty, and symmetric KL divergence together. We evaluate four inference modes on seven backbone-dataset combinations. **Latent-mean matching** emerges as the most effective inference option in almost all settings, significantly improving average open-set Rank-1 accuracy and reducing Equal Error Rate (EER).
+
+## Key Contributions
+
+1. **Probabilistic Embedding:** Palmprint features are modeled as diagonal Gaussian embeddings, explicitly decoupling the mean, variance, stochastic sample, projection head, and reconstruction decoder.
+2. **Generative Regularization & Training Schedule:** The representation is trained with identity, covariance, reconstruction, and uncertainty-calibration objectives under a staged schedule.
+3. **Open-Set Inference Modes:** We define four inference modes (M0: projected-mean matching, M1: projected-space adaptation, M2: latent-space adaptation, M3: latent-mean matching) and a validation-calibrated rejection rule.
+4. **Comprehensive Evaluation:** Results are reported for seven backbone-dataset combinations across three datasets (Own, Tongji, IITD) using models like CCNet, ResNet18, and PalmNet.
+
+## Method Overview
+
+- **Architecture:** An encoder predicts Gaussian parameters $(\boldsymbol{\mu}, \boldsymbol{\sigma}^2)$. The mean $\boldsymbol{\mu}$ is projected for identity learning, while a stochastic sample $\mathbf{z}$ conditions a U-Net decoder using FiLM (Feature-wise Linear Modulation) during training.
+- **Inference Rules:** Probes are accepted based on a combination of similarity score, probe uncertainty ($U_p$), and symmetric KL divergence ($D_{\mathrm{SKL}}$).
+- **Matching Modes:** 
+  - **M0:** Projected-mean matching
+  - **M1:** Projected-space adaptation
+  - **M2:** Latent-space adaptation
+  - **M3:** Latent-mean matching (generally outperforms others)
+
+## Datasets
+
+Experiments were conducted on the following datasets:
+- **Own Dataset** (Evaluated on CCNet, ResNet18, PalmNet)
+- **Tongji** (Evaluated on CCNet, ResNet18)
+- **IITD** (Evaluated on CCNet, ResNet18)
+
+## Project Structure
 
 ```text
-PALM/
-├── config/                  # Quản lý cấu hình bằng Hydra (cấu trúc module)
-│   ├── dataset/             # Các kịch bản dataset (mnist, own_split_hand, own_split_ratio)
-│   ├── model/               # Các kiến trúc model (unet, default, unet_mock)
-│   ├── training/            # Cấu hình siêu tham số, optimizer, epochs
-│   └── config.yaml          # File gốc điều phối toàn bộ cấu hình
-├── data/                    # Nơi chứa ảnh gốc hoặc đã qua tiền xử lý
-├── logs/                    # Thư mục hệ sinh thái Tracking
-│   ├── version_0/           # Toàn bộ thông tin (config, checkpoints, test_results) của đợt chạy 0
-│   ├── version_1/           # Đợt chạy 1...
-│   └── unversioned_results/ # Nơi chứa kết quả các đoạn test chạy mù (không dùng model đã train)
-├── src/                     # Mã nguồn lõi (Core Engine)
-│   ├── datasets/            # Logic load ảnh, dataloader, sampler
-│   ├── engine/              # LightningModule, các file core dùng để train/test
-│   ├── losses/              # Các hàm mục tiêu (KL, Contrastive, Reconstruction)
-│   ├── models/              # Kiến trúc mạng lưới (UNet, Backbone, Verifier)
-│   └── processing/          # Script xử lý trích xuất điểm mốc bàn tay
-├── tools/                   # Các công cụ tiện ích có thể chạy trực tiếp
-│   ├── train_lightning.py   # Lệnh chính để huấn luyện mô hình
-│   ├── test_pipeline.py     # Lệnh đánh giá mô hình (Metrics, Thresholding)
-│   ├── generate_images.py   # Sinh/tái tạo ảnh từ mô hình (tạo biến thể, sample...)
-│   ├── visualize_gradients.py # Trực quan hóa dòng chảy gradient của mạng
-│   └── finding_represent.py # Mô phỏng tìm vector r chuẩn tối ưu cho Open-set (Test-Time Opt)
-├── requirements.txt         # File cấu hình thư viện tinh gọn
-└── README.md                # Tài liệu hướng dẫn bạn đang đọc
+.
+├── config/             # Configuration files (e.g., dataset YAMLs, hyperparameters)
+├── data/               # Datasets and gallery caches
+├── logs/               # Output logs and model checkpoints
+├── src/                # Source code (models, dataset loaders, architectures)
+├── tools/              # Scripts for training, evaluation, and utilities
+└── implement-idea/     # Notes, ideas, and detailed experiment scripts
 ```
 
----
+## How to Run
 
-## 🚀 Hướng Dẫn Cài Đặt (Installation)
-
-1. Cài đặt Python (khuyên dùng Python 3.9+).
-2. Tải mã nguồn về và cài đặt các thư viện lõi:
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## ⚡ Hướng Dẫn Sử Dụng (Usage)
-
-Dự án sử dụng Hydra làm framework cấu hình chính. Cú pháp chạy chung là: 
-`python tools/script.py [tham_số=giá_trị]`
-
-### 1. Huấn Luyện Mô Hình (Training)
-Lệnh mặc định sẽ tải toàn bộ cấu hình từ `config/config.yaml`.
-```bash
-python tools/train_lightning.py
-```
-
-Bạn có thể thay đổi ngay lập tức Dataset và Model mà không cần mở file:
-```bash
-# Huấn luyện trên OwnDataset (Chế độ chia theo Hand: tay trái train, tay phải val) với kiến trúc UNet
-python tools/train_lightning.py dataset=own_split_hand model=unet
-
-# Huấn luyện theo tỷ lệ random gộp tay (Ratio) với backbone dạng mock test
-python tools/train_lightning.py dataset=own_split_ratio model=unet_mock
-```
-
-Khi chạy, hệ thống sẽ tự động sinh ra thư mục `logs/version_X`. Thư mục này chứa:
-- `config_backup.yaml`: Lưu lại chính xác thông số bạn đã dùng để train.
-- `checkpoints/best.ckpt` và `last.ckpt`: Các trọng số mô hình lưu tự động.
-- `epoch_samples/`: Tự động sinh ảnh đối chiếu sau mỗi Epoch.
-- Hệ sinh thái tracking của TensorBoard.
-
-### 2. Sinh và Tái Tạo Ảnh (Image Generation)
-Lệnh sinh ảnh có thể lấy trực tiếp checkpoint tương ứng trong `version_X`. Hệ thống sẽ xả kết quả ảnh sinh ra vào thẳng thư mục `logs/version_X/generated/`.
+### Training
+To train the model, you can run the lightning training script provided in the `tools` directory. You can specify the dataset and other parameters using Hydra syntax:
 
 ```bash
-python tools/generate_images.py checkpoint="logs/version_0/checkpoints/best.ckpt" generation.mode="reconstruct"
+python tools/train_lightning.py dataset=iitd_hand
 ```
-*(Các chế độ sinh ảnh: `reconstruct`, `variations`, `contrastive`, `latent_sampling`)*
+Checkpoints and logs will automatically be saved to the `logs/` directory.
 
-### 3. Đánh Giá Đường Ống (Test Pipeline)
-Công cụ phân tích và đo lường hệ thống tự động, chạy ra các file logs log và `.csv` để đánh giá Threshold.
-```bash
-python tools/test_pipeline.py checkpoint="logs/version_0/checkpoints/best.ckpt"
-```
-Kết quả CSV và Text Logging sẽ nằm rải trong thư mục `logs/version_0/test_results/`.
+### Inference / Evaluation
+The evaluation script extracts features, builds the gallery, and computes EER and Rank-1 Accuracy automatically.
 
-### 4. Tìm vector đại diện tối ưu (TTO - Test Time Optimization)
-Để test thuật toán tối ưu hóa vector đại diện trên tập mù:
+For baseline evaluation (Projected Space without adaptation):
 ```bash
-python tools/finding_represent.py checkpoint="logs/version_0/checkpoints/best.ckpt" steps=100
+# Define your checkpoint path and dataset
+CKPT="logs/Unet_Palmnet/version_2/checkpoints/last.ckpt"
+DATASET="iitd_hand"
+
+# Run evaluation
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET +eval=eval eval.mode=0
 ```
 
-### 5. Phân Tích Dòng Chảy Gradient
-Xem cấu trúc mạng và luồng đi của gradient để debug hiện tượng mất mát (vanishing gradient):
+For advanced evaluation involving negative mining and adaptation (e.g., Optimize in Latent Space using Spherical Rotation):
 ```bash
-python tools/visualize_gradients.py
+python tools/eval_attendance.py checkpoint=$CKPT dataset=$DATASET +eval=eval eval.mode=2 eval.neg_strategy=spherical
 ```
-Kết quả sơ đồ mạn nhện gradient sẽ xuất hiện dưới dạng `.png`.
+*Note: The first time you run an evaluation for a checkpoint, it will extract and cache the features. Subsequent runs with different modes will be much faster. You can force re-extraction by passing `eval.force_reextract=true`.*
+
+## Keywords
+*Palmprint recognition, probabilistic embedding, open-set identification, aleatoric uncertainty, generative regularization*
