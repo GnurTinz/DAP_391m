@@ -172,7 +172,7 @@ class GenerativeLightningModule(pl.LightningModule):
                 # Lưu file ảnh vật lý ra ổ cứng
                 import os
                 import torchvision.utils as vutils
-                version_dir = self.logger.log_dir if self.logger else "logs/unversioned_results"
+                version_dir = getattr(self.logger, "log_dir", None) or "logs/unversioned_results"
                 img_dir = os.path.join(version_dir, "epoch_samples")
                 os.makedirs(img_dir, exist_ok=True)
                 

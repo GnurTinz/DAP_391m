@@ -1,0 +1,16 @@
+# Cấu hình chỉ dùng Contrastive Loss (các hệ số khác = 0)
+beta_kl:
+  type: "constant"
+  value: 0.0
+
+lambda_con:
+  type: "constant"
+  value: 1.0
+
+lambda_rec:
+  type: "constant"
+  value: 0.0
+
+lambda_unc:
+  type: "constant"
+  value: 0.0

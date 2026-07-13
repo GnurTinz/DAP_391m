@@ -124,7 +124,8 @@ def main(cfg: DictConfig):
         callbacks=[best_checkpoint_callback, last_checkpoint_callback, lr_monitor, progress_bar],
         logger=logger,
         log_every_n_steps=cfg.training.log_interval,
-        check_val_every_n_epoch=1
+        check_val_every_n_epoch=1,
+        fast_dev_run=cfg.training.get('fast_dev_run', False)
     )
 
     # Start Training

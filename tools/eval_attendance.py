@@ -357,7 +357,7 @@ def build_gallery(model, mu, proj, logvar, labels, eval_cfg: dict,
                     loss_type="bce",
                     verbose=False,
                 )
-                gallery_r_list.append(r_i)
+                gallery_r_list.append(r_i.squeeze(0))
             gallery_r = torch.stack(gallery_r_list, dim=0)  # (N, proj_dim)
 
         elif mode == 2 or mode == 4:
@@ -413,6 +413,8 @@ def build_gallery(model, mu, proj, logvar, labels, eval_cfg: dict,
 # ==============================================================================
 def calculate_eer(genuine_scores: list, impostor_scores: list):
     """Tính EER và threshold tương ứng."""
+    if not genuine_scores or not impostor_scores:
+        return 0.0, 0.0
     from sklearn.metrics import roc_curve
     y_true  = [1] * len(genuine_scores) + [0] * len(impostor_scores)
     y_score = genuine_scores + impostor_scores
@@ -656,8 +658,8 @@ def evaluate_open_set(gallery: dict,
         rejected_stage2 = sum(s < eer_thresh for s in passed_gen_sims)
         frr = ((rejected_stage1 + rejected_stage2) / len(genuine_scores)) * 100.0 if len(genuine_scores) > 0 else 0.0
 
-        stage1_far = (sum(u <= unc_thresh for u in str_unc) / len(str_unc)) * 100.0
-        stage1_frr = (rejected_stage1 / len(known_unc)) * 100.0
+        stage1_far = (sum(u <= unc_thresh for u in str_unc) / len(str_unc)) * 100.0 if len(str_unc) > 0 else 0.0
+        stage1_frr = (rejected_stage1 / len(known_unc)) * 100.0 if len(known_unc) > 0 else 0.0
     else:
         # ── FAR: tỷ lệ stranger vượt ngưỡng (bị nhận nhầm) ────────────────────
         far = sum(s >= eer_thresh for s in stranger_max_sims) / len(stranger_max_sims) * 100.0
@@ -829,10 +831,12 @@ def plot_openset_score_distribution(genuine: list, impostor: list, stranger_max:
     if impostor:
         ax.hist(impostor,     bins=80, color="#f39c12", alpha=0.55,
                 label="Known-Impostor", density=True)
-    ax.hist(stranger_max,     bins=80, color="#e74c3c", alpha=0.60,
-            label="Stranger (max-sim)", density=True)
-    ax.hist(genuine,          bins=80, color="#2ecc71", alpha=0.65,
-            label="Genuine (known probe)", density=True)
+    if stranger_max:
+        ax.hist(stranger_max,     bins=80, color="#e74c3c", alpha=0.60,
+                label="Stranger (max-sim)", density=True)
+    if genuine:
+        ax.hist(genuine,          bins=80, color="#2ecc71", alpha=0.65,
+                label="Genuine (known probe)", density=True)
 
     ax.axvline(thresh, color="#8e44ad", linestyle="--", linewidth=1.8,
                label=f"EER thresh={thresh:.3f}  (EER={eer:.2f}%)")
@@ -855,6 +859,17 @@ def plot_openset_score_distribution(genuine: list, impostor: list, stranger_max:
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig):
     config = OmegaConf.to_container(cfg, resolve=True)
+    
+    # --- Thiết lập Random Seed ---
+    seed = config.get("seed", config.get("dataset", {}).get("seed", 42))
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    # -----------------------------
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # ── Debug: in raw eval dict từ Hydra để kiểm tra config có được đọc không ──

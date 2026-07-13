@@ -1,0 +1,22 @@
+defaults:
+  - dataset: iitd_person_left
+  - model: unet
+  - training: default
+  - losses: default
+  - sampling: default
+  - loss_schedules: contrastive_only
+  - logging: default
+  - represent: default
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+# Cố định seed cho tính chất Deterministic
+seed: 42
+
+model:
+  projector:
+    use_mlp: false # Tắt MLP

@@ -26,7 +26,7 @@ For open-set decisions, we consider similarity, probe uncertainty, and symmetric
 
 1. **Probabilistic Embedding:** Palmprint features are modeled as diagonal Gaussian embeddings, explicitly decoupling the mean, variance, stochastic sample, projection head, and reconstruction decoder.
 2. **Generative Regularization & Training Schedule:** The representation is trained with identity, covariance, reconstruction, and uncertainty-calibration objectives under a staged schedule.
-3. **Open-Set Inference Modes:** We define four inference modes (M0: projected-mean matching, M1: projected-space adaptation, M2: latent-space adaptation, M3: latent-mean matching) and a validation-calibrated rejection rule.
+3. **Open-Set Inference Modes:** We define four inference modes (M0: projected-mean matching, M1: projected-space adaptation, M2: latent-space adaptation, M3: latent-mean matching) where rejection thresholds (for similarity, uncertainty, and KL divergence) are determined via an **automated grid search** over the validation set.
 4. **Comprehensive Evaluation:** Results are reported for seven backbone-dataset combinations across three datasets (Own, Tongji, IITD) using models like CCNet, ResNet18, and PalmNet.
 
 ## Method Overview
