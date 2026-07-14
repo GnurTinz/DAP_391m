@@ -1,0 +1,16 @@
+Combined Results for model0_palmnet_iitd_iitd_newmetric (from 3 logs)
+==================================================
+
+Closed_Rank1             : Mean = 32.6567, Std = 1.1904
+Closed_EER               : Mean = 21.4100, Std = 0.8755
+Closed_Mean_Genuine      : Mean = 40.0000, Std = 1.6330
+Closed_Mean_Impostor     : Mean = 40.0000, Std = 1.6330
+Open_Rank1               : Mean = 32.5133, Std = 1.3271
+Open_KL_Gate_EER         : Mean = 27.7000, Std = 1.1323
+Open_Uncertainty_EER     : Mean = 45.6933, Std = 3.6340
+Open_Stage1_FRR          : Mean = 45.5300, Std = 3.7604
+Open_FAR_Stranger        : Mean = 45.7600, Std = 3.4209
+Open_FRR_Known           : Mean = 59.2167, Std = 2.3330
+Open_EER                 : Mean = 60.8933, Std = 2.6999
+Open_Mean_Genuine        : Mean = 40.0000, Std = 1.6330
+Open_Mean_Stranger       : Mean = 40.0000, Std = 1.6330

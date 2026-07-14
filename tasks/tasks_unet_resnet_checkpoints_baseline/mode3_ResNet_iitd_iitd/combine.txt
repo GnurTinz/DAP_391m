@@ -1,0 +1,20 @@
+Combined Results for mode3_ResNet_iitd_iitd (from 3 logs)
+==================================================
+
+Closed_Rank1             : Mean = 84.4967, Std = 3.8919
+Closed_EER               : Mean = 4.9433, Std = 1.0423
+Closed_Mean_Genuine      : Mean = 55.0000, Std = 0.8165
+Closed_Mean_Impostor     : Mean = 55.0000, Std = 0.8165
+Open_Rank1               : Mean = 79.5100, Std = 5.2629
+Open_KL_Gate_EER         : Mean = 16.7300, Std = 1.6385
+Open_Uncertainty_EER     : Mean = 48.2267, Std = 5.5287
+Open_Stage1_FRR          : Mean = 48.2100, Std = 5.4104
+Open_FAR_Stranger        : Mean = 37.1033, Std = 2.7938
+Open_FRR_Known           : Mean = 52.3633, Std = 4.2493
+Open_EER                 : Mean = 23.9567, Std = 3.6589
+Open_AUROC               : Mean = 80.9500, Std = 4.0528
+Open_DIR_1               : Mean = 19.6767, Std = 15.4702
+Open_DIR_01              : Mean = 5.5367, Std = 2.8229
+Open_OSCR                : Mean = 72.5300, Std = 5.6944
+Open_Mean_Genuine        : Mean = 55.0000, Std = 0.8165
+Open_Mean_Stranger       : Mean = 55.0000, Std = 0.8165

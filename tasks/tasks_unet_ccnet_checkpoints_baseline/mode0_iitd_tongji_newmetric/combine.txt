@@ -1,0 +1,20 @@
+Combined Results for mode0_iitd_tongji_newmetric (from 3 logs)
+==================================================
+
+Closed_Rank1             : Mean = 3.2000, Std = 0.6532
+Closed_EER               : Mean = 45.1233, Std = 1.0964
+Closed_Mean_Genuine      : Mean = 43.6667, Std = 1.2472
+Closed_Mean_Impostor     : Mean = 43.6667, Std = 1.2472
+Open_Rank1               : Mean = 4.2000, Std = 1.6083
+Open_KL_Gate_EER         : Mean = 44.2433, Std = 2.3088
+Open_Uncertainty_EER     : Mean = 50.0000, Std = 0.0000
+Open_Stage1_FRR          : Mean = 100.0000, Std = 0.0000
+Open_FAR_Stranger        : Mean = 0.0000, Std = 0.0000
+Open_FRR_Known           : Mean = 100.0000, Std = 0.0000
+Open_EER                 : Mean = 82.1000, Std = 2.1645
+Open_AUROC               : Mean = 14.9967, Std = 2.7096
+Open_DIR_1               : Mean = 3.0000, Std = 0.7483
+Open_DIR_01              : Mean = 0.0667, Std = 0.0943
+Open_OSCR                : Mean = 3.1233, Std = 1.0679
+Open_Mean_Genuine        : Mean = 43.6667, Std = 1.2472
+Open_Mean_Stranger       : Mean = 43.6667, Std = 1.2472

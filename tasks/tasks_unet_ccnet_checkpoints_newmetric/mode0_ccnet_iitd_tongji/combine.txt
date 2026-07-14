@@ -1,0 +1,20 @@
+Combined Results for mode0_ccnet_iitd_tongji (from 3 logs)
+==================================================
+
+Closed_Rank1             : Mean = 79.0000, Std = 1.8184
+Closed_EER               : Mean = 10.6667, Std = 0.2563
+Closed_Mean_Genuine      : Mean = 57.3333, Std = 1.2472
+Closed_Mean_Impostor     : Mean = 57.3333, Std = 1.2472
+Open_Rank1               : Mean = 80.9333, Std = 1.5434
+Open_KL_Gate_EER         : Mean = 7.3967, Std = 0.8864
+Open_Uncertainty_EER     : Mean = 51.7667, Std = 2.4482
+Open_Stage1_FRR          : Mean = 51.8000, Std = 2.4712
+Open_FAR_Stranger        : Mean = 34.9333, Std = 5.1390
+Open_FRR_Known           : Mean = 58.5333, Std = 0.7364
+Open_EER                 : Mean = 32.1667, Std = 1.4744
+Open_AUROC               : Mean = 75.4433, Std = 1.5639
+Open_DIR_1               : Mean = 28.6000, Std = 3.4909
+Open_DIR_01              : Mean = 12.0000, Std = 4.2364
+Open_OSCR                : Mean = 67.4333, Std = 0.7922
+Open_Mean_Genuine        : Mean = 57.3333, Std = 1.2472
+Open_Mean_Stranger       : Mean = 57.3333, Std = 1.2472

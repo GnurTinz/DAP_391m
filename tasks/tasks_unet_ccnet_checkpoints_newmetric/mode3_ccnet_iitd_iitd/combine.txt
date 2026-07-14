@@ -1,0 +1,20 @@
+Combined Results for mode3_ccnet_iitd_iitd (from 3 logs)
+==================================================
+
+Closed_Rank1             : Mean = 99.4500, Std = 0.7778
+Closed_EER               : Mean = 0.7300, Std = 0.5220
+Closed_Mean_Genuine      : Mean = 20.0000, Std = 27.5802
+Closed_Mean_Impostor     : Mean = 20.0000, Std = 27.5802
+Open_Rank1               : Mean = 99.4500, Std = 0.7778
+Open_KL_Gate_EER         : Mean = 2.5567, Std = 1.2540
+Open_Uncertainty_EER     : Mean = 55.6300, Std = 1.0602
+Open_Stage1_FRR          : Mean = 55.3967, Std = 1.1968
+Open_FAR_Stranger        : Mean = 6.8400, Std = 4.8862
+Open_FRR_Known           : Mean = 55.6733, Std = 1.5760
+Open_EER                 : Mean = 1.7033, Std = 1.8532
+Open_AUROC               : Mean = 99.5233, Std = 0.4956
+Open_DIR_1               : Mean = 98.3400, Std = 1.3513
+Open_DIR_01              : Mean = 97.7900, Std = 2.0606
+Open_OSCR                : Mean = 99.2767, Std = 0.8393
+Open_Mean_Genuine        : Mean = 20.0000, Std = 27.5802
+Open_Mean_Stranger       : Mean = 20.0000, Std = 27.5802

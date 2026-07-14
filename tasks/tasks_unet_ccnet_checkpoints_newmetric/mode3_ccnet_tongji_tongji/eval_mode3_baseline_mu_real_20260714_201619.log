@@ -1,0 +1,59 @@
+2026-07-14 20:16:19,711 [INFO] [Eval] mode=3 | neg_strategy=real | device=cuda
+2026-07-14 20:16:19,711 [INFO] Reading model config from D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\config_backup.yaml
+2026-07-14 20:16:21,010 [INFO] Loaded checkpoint: D:\FPTU\26SUMMER\DAP391m\DAP391m_fver\DAP_391m\logs\version_2\checkpoints\last.ckpt
+2026-07-14 20:16:21,015 [INFO] Frozen 15 BatchNorm layer(s) into eval mode.
+2026-07-14 20:16:21,018 [INFO] Output directory: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real
+2026-07-14 20:16:21,020 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-14 20:16:21,134 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-14 20:16:36,742 [INFO] Saved feature cache (+ 50 ref images): D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\feats_register.pt
+2026-07-14 20:16:50,892 [INFO] Saved feature cache (+ 50 ref images): D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\feats_probe.pt
+2026-07-14 20:17:06,407 [INFO] Saved feature cache (+ 50 ref images): D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\feats_stranger.pt
+2026-07-14 20:17:06,409 [INFO] Register : 500 samples, 50 identities
+2026-07-14 20:17:06,410 [INFO] Probe    : 500 samples, 50 identities
+2026-07-14 20:17:06,411 [INFO] Stranger : 1000 samples, 50 identities
+2026-07-14 20:17:06,411 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-14 20:17:06,411 [INFO] Building gallery: Mode=3, neg_strategy='real', 50 identities
+2026-07-14 20:17:06,478 [INFO] Saved gallery cache: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\gallery.pt
+2026-07-14 20:17:06,479 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-14 20:17:06,545 [INFO] ============================================================
+2026-07-14 20:17:06,546 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-14 20:17:06,547 [INFO]   Rank-1 Accuracy : 94.60%
+2026-07-14 20:17:06,547 [INFO]   EER             : 3.16%  (thresh=0.4660)
+2026-07-14 20:17:06,547 [INFO]   Mean Genuine    : 0.7786
+2026-07-14 20:17:06,548 [INFO]   Mean Impostor   : 0.1689
+2026-07-14 20:17:06,548 [INFO]   Probe count     : 500
+2026-07-14 20:17:06,549 [INFO] ============================================================
+2026-07-14 20:17:06,549 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-14 20:17:07,057 [INFO] ============================================================
+2026-07-14 20:17:07,059 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-14 20:17:07,059 [INFO]   Open-Set Rank-1 : 94.60%
+2026-07-14 20:17:07,060 [INFO]   KL-Gate EER     : 5.22% (thresh=16.4143)
+2026-07-14 20:17:07,062 [INFO]   Uncertainty EER : 45.35% (thresh=0.9999)
+2026-07-14 20:17:07,062 [INFO]   Stage-1 FRR     : 45.40%   - known bi reject boi Uncertainty
+2026-07-14 20:17:07,062 [INFO]   FAR (stranger)  : 19.50%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-14 20:17:07,064 [INFO]   FRR (known)     : 48.60%   - known bi reject sai (tong hop)
+2026-07-14 20:17:07,064 [INFO]   EER (open-set)  : 6.20%  (thresh=0.4660)
+2026-07-14 20:17:07,065 [INFO]   AUROC (Known-vs-Unknown): 97.05%
+2026-07-14 20:17:07,066 [INFO]   DIR @ FPIR=1%   : 91.40%
+2026-07-14 20:17:07,067 [INFO]   DIR @ FPIR=0.1% : 87.40%
+2026-07-14 20:17:07,067 [INFO]   OSCR Area       : 94.38%
+2026-07-14 20:17:07,068 [INFO]   Mean Genuine    : 0.7503
+2026-07-14 20:17:07,069 [INFO]   Mean Stranger   : 0.1102
+2026-07-14 20:17:07,070 [INFO]   Known probe     : 500 | Stranger: 1000
+2026-07-14 20:17:07,070 [INFO] ============================================================
+2026-07-14 20:17:07,132 [INFO] Saved results: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\results.json
+2026-07-14 20:17:07,136 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-14 20:17:07,676 [INFO] Saved open-set score distribution: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\score_distribution_openset.png
+2026-07-14 20:17:07,863 [INFO] Saved OSCR curve: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\oscr_curve.png
+2026-07-14 20:17:08,032 [INFO] Saved Risk-Coverage curve: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\risk_coverage.png
+2026-07-14 20:17:08,414 [INFO] Saved uncertainty distribution: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\uncertainty_distribution_openset.png
+2026-07-14 20:17:08,817 [INFO] Saved sigma distribution: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\sigma_distribution_openset.png
+2026-07-14 20:17:08,817 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-14 20:17:08,819 [INFO] Running t-SNE (2000 points, perplexity=30)...
+2026-07-14 20:17:16,577 [INFO] Saved t-SNE plot: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\tsne_proj.png
+2026-07-14 20:17:16,581 [INFO] Running t-SNE (2000 points, perplexity=30)...
+2026-07-14 20:17:21,308 [INFO] Saved t-SNE plot: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real\tsne_mu.png
+2026-07-14 20:17:21,310 [INFO] 
+2026-07-14 20:17:21,310 [INFO] All outputs saved to: D:/FPTU/26SUMMER/DAP391m/DAP391m_fver/DAP_391m/logs/version_2\eval\mode3_baseline_mu_real
+2026-07-14 20:17:21,311 [INFO] Log file: tasks\eval_mode3_baseline_mu_real_20260714_201619.log
+2026-07-14 20:17:21,311 [INFO] Done.

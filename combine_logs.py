@@ -21,7 +21,11 @@ def parse_log_file(filepath):
         'FRR_Known': r'FRR \(known\)\s*:\s*([\d\.]+)%',
         'Open_EER': r'EER \(open-set\)\s*:\s*([\d\.]+)%',
         'Open_Mean_Genuine': r'\[Open-Set.*?Mean Genuine\s*:\s*([\-\d\.]+)',
-        'Open_Mean_Stranger': r'Mean Stranger\s*:\s*([\-\d\.]+)'
+        'Open_Mean_Stranger': r'Mean Stranger\s*:\s*([\-\d\.]+)',
+        'Open_AUROC': r'AUROC \(Known-vs-Unknown\):\s*([\d\.]+)%',
+        'Open_DIR_1': r'DIR @ FPIR=1%\s*:\s*([\d\.]+)%',
+        'Open_DIR_01': r'DIR @ FPIR=0.1%\s*:\s*([\d\.]+)%',
+        'Open_OSCR': r'OSCR Area\s*:\s*([\d\.]+)%'
     }
     
     for key, pattern in patterns.items():
@@ -79,6 +83,18 @@ def parse_log_file(filepath):
         elif 'Mean Stranger   :' in line and current_section == 'Open':
             val = re.search(r':\s*([\-\d\.]+)', line).group(1)
             metrics['Open_Mean_Stranger'] = float(val)
+        elif 'AUROC (Known-vs-Unknown):' in line and current_section == 'Open':
+            val = re.search(r':\s*([\d\.]+)%', line).group(1)
+            metrics['Open_AUROC'] = float(val)
+        elif 'DIR @ FPIR=1%   :' in line and current_section == 'Open':
+            val = re.search(r':\s*([\d\.]+)%', line).group(1)
+            metrics['Open_DIR_1'] = float(val)
+        elif 'DIR @ FPIR=0.1% :' in line and current_section == 'Open':
+            val = re.search(r':\s*([\d\.]+)%', line).group(1)
+            metrics['Open_DIR_01'] = float(val)
+        elif 'OSCR Area       :' in line and current_section == 'Open':
+            val = re.search(r':\s*([\d\.]+)%', line).group(1)
+            metrics['Open_OSCR'] = float(val)
             
     return metrics
 
@@ -88,59 +104,60 @@ def process_directory(base_dir):
         print(f"Directory {tasks_dir} does not exist.")
         return
 
-    subdirs = [d for d in os.listdir(tasks_dir) if os.path.isdir(os.path.join(tasks_dir, d))]
+    # Categories are the direct subdirectories of e:\palm\tasks
+    categories = [d for d in os.listdir(tasks_dir) if os.path.isdir(os.path.join(tasks_dir, d))]
     
-    overall_results = {}
-    
-    for subdir in subdirs:
-        subdir_path = os.path.join(tasks_dir, subdir)
-        log_files = [f for f in os.listdir(subdir_path) if f.endswith('.log')]
+    for category in categories:
+        category_path = os.path.join(tasks_dir, category)
+        overall_results = {}
         
-        if not log_files:
-            continue
-            
-        print(f"Processing {subdir} ({len(log_files)} logs)...")
-        
-        all_metrics = {}
-        for log_file in log_files:
-            metrics = parse_log_file(os.path.join(subdir_path, log_file))
-            for k, v in metrics.items():
-                if k not in all_metrics:
-                    all_metrics[k] = []
-                all_metrics[k].append(v)
+        # Traverse everything inside the category folder
+        for root, dirs, files in os.walk(category_path):
+            log_files = [f for f in files if f.endswith('.log')]
+            if not log_files:
+                continue
                 
-        # Calculate mean and std
-        summary = {}
-        for k, v_list in all_metrics.items():
-            summary[k] = {
-                'mean': np.mean(v_list),
-                'std': np.std(v_list)
-            }
+            subdir = os.path.basename(root)
+            print(f"Processing {subdir} in {category} ({len(log_files)} logs)...")
             
-        overall_results[subdir] = summary
-        
-        # Write combine.txt in the subdir
-        combine_path = os.path.join(subdir_path, 'combine.txt')
-        with open(combine_path, 'w', encoding='utf-8') as f:
-            f.write(f"Combined Results for {subdir} (from {len(log_files)} logs)\n")
-            f.write("="*50 + "\n\n")
-            for k, stats in summary.items():
-                f.write(f"{k:25s}: Mean = {stats['mean']:.4f}, Std = {stats['std']:.4f}\n")
+            all_metrics = {}
+            for log_file in log_files:
+                metrics = parse_log_file(os.path.join(root, log_file))
+                for k, v in metrics.items():
+                    if k not in all_metrics:
+                        all_metrics[k] = []
+                    all_metrics[k].append(v)
+                    
+            summary = {}
+            for k, v_list in all_metrics.items():
+                summary[k] = {
+                    'mean': np.mean(v_list),
+                    'std': np.std(v_list)
+                }
                 
-    # Also write a combined report in tasks/
-    report_path = os.path.join(tasks_dir, 'combined_report.txt')
-    with open(report_path, 'w', encoding='utf-8') as f:
-        f.write("Overall Combined Report for All Tasks\n")
-        f.write("="*50 + "\n\n")
-        
-        for subdir, summary in overall_results.items():
-            f.write(f"Task: {subdir}\n")
-            f.write("-" * 30 + "\n")
-            for k, stats in summary.items():
-                f.write(f"{k:25s}: Mean = {stats['mean']:.4f}, Std = {stats['std']:.4f}\n")
-            f.write("\n")
+            overall_results[subdir] = summary
             
-    print(f"Done! Combined results written to individual folders and {report_path}")
+            # Write combine.txt in the root
+            combine_path = os.path.join(root, 'combine.txt')
+            with open(combine_path, 'w', encoding='utf-8') as f:
+                f.write(f"Combined Results for {subdir} (from {len(log_files)} logs)\n")
+                f.write("="*50 + "\n\n")
+                for k, stats in summary.items():
+                    f.write(f"{k:25s}: Mean = {stats['mean']:.4f}, Std = {stats['std']:.4f}\n")
+                    
+        if overall_results:
+            report_path = os.path.join(category_path, 'combined_report.txt')
+            with open(report_path, 'w', encoding='utf-8') as f:
+                f.write(f"Overall Combined Report for {category}\n")
+                f.write("="*50 + "\n\n")
+                
+                for subdir, summary in overall_results.items():
+                    f.write(f"Task: {subdir}\n")
+                    f.write("-" * 30 + "\n")
+                    for k, stats in summary.items():
+                        f.write(f"{k:25s}: Mean = {stats['mean']:.4f}, Std = {stats['std']:.4f}\n")
+                    f.write("\n")
+            print(f"Done for {category}! report at {report_path}")
 
 if __name__ == '__main__':
     process_directory('e:\\palm')

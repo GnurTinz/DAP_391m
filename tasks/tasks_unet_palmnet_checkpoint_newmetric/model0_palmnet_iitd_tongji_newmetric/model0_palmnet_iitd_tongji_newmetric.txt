@@ -1,0 +1,16 @@
+Combined Results for model0_palmnet_iitd_tongji_newmetric (from 3 logs)
+==================================================
+
+Closed_Rank1             : Mean = 31.2667, Std = 5.5650
+Closed_EER               : Mean = 22.8000, Std = 1.6850
+Closed_Mean_Genuine      : Mean = 38.0000, Std = 1.6330
+Closed_Mean_Impostor     : Mean = 38.0000, Std = 1.6330
+Open_Rank1               : Mean = 31.2000, Std = 5.5594
+Open_KL_Gate_EER         : Mean = 31.3000, Std = 1.6043
+Open_Uncertainty_EER     : Mean = 48.3500, Std = 0.2483
+Open_Stage1_FRR          : Mean = 48.4000, Std = 0.2828
+Open_FAR_Stranger        : Mean = 46.9000, Std = 0.5888
+Open_FRR_Known           : Mean = 58.9333, Std = 1.1470
+Open_EER                 : Mean = 63.9167, Std = 1.6484
+Open_Mean_Genuine        : Mean = 38.0000, Std = 1.6330
+Open_Mean_Stranger       : Mean = 38.0000, Std = 1.6330

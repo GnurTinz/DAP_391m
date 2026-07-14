@@ -1,0 +1,163 @@
+Overall Combined Report for tasks_unet_ccnet_checkpoints_newmetric
+==================================================
+
+Task: mode0_ccnet_iitd_iitd
+------------------------------
+Closed_Rank1             : Mean = 97.7900, Std = 2.0606
+Closed_EER               : Mean = 1.3867, Std = 1.4156
+Closed_Mean_Genuine      : Mean = 54.6667, Std = 0.4714
+Closed_Mean_Impostor     : Mean = 54.6667, Std = 0.4714
+Open_Rank1               : Mean = 97.7900, Std = 2.0606
+Open_KL_Gate_EER         : Mean = 2.5567, Std = 1.2540
+Open_Uncertainty_EER     : Mean = 55.6300, Std = 1.0602
+Open_Stage1_FRR          : Mean = 55.3967, Std = 1.1968
+Open_FAR_Stranger        : Mean = 9.5667, Std = 8.6998
+Open_FRR_Known           : Mean = 55.6733, Std = 1.5760
+Open_EER                 : Mean = 3.3633, Std = 0.6540
+Open_AUROC               : Mean = 99.1667, Std = 0.5584
+Open_DIR_1               : Mean = 89.7433, Std = 7.5954
+Open_DIR_01              : Mean = 88.9100, Std = 6.8946
+Open_OSCR                : Mean = 97.5733, Std = 2.0093
+Open_Mean_Genuine        : Mean = 54.6667, Std = 0.4714
+Open_Mean_Stranger       : Mean = 54.6667, Std = 0.4714
+
+Task: mode0_ccnet_iitd_tongji
+------------------------------
+Closed_Rank1             : Mean = 79.0000, Std = 1.8184
+Closed_EER               : Mean = 10.6667, Std = 0.2563
+Closed_Mean_Genuine      : Mean = 57.3333, Std = 1.2472
+Closed_Mean_Impostor     : Mean = 57.3333, Std = 1.2472
+Open_Rank1               : Mean = 80.9333, Std = 1.5434
+Open_KL_Gate_EER         : Mean = 7.3967, Std = 0.8864
+Open_Uncertainty_EER     : Mean = 51.7667, Std = 2.4482
+Open_Stage1_FRR          : Mean = 51.8000, Std = 2.4712
+Open_FAR_Stranger        : Mean = 34.9333, Std = 5.1390
+Open_FRR_Known           : Mean = 58.5333, Std = 0.7364
+Open_EER                 : Mean = 32.1667, Std = 1.4744
+Open_AUROC               : Mean = 75.4433, Std = 1.5639
+Open_DIR_1               : Mean = 28.6000, Std = 3.4909
+Open_DIR_01              : Mean = 12.0000, Std = 4.2364
+Open_OSCR                : Mean = 67.4333, Std = 0.7922
+Open_Mean_Genuine        : Mean = 57.3333, Std = 1.2472
+Open_Mean_Stranger       : Mean = 57.3333, Std = 1.2472
+
+Task: mode0_ccnet_tongji_iitd
+------------------------------
+Closed_Rank1             : Mean = 91.7033, Std = 3.7373
+Closed_EER               : Mean = 4.5533, Std = 2.1346
+Closed_Mean_Genuine      : Mean = 7.6667, Std = 0.4714
+Closed_Mean_Impostor     : Mean = 7.6667, Std = 0.4714
+Open_Rank1               : Mean = 93.9167, Std = 3.0345
+Open_KL_Gate_EER         : Mean = 8.5367, Std = 1.0816
+Open_Uncertainty_EER     : Mean = 48.2600, Std = 3.2809
+Open_Stage1_FRR          : Mean = 48.4800, Std = 3.5360
+Open_FAR_Stranger        : Mean = 18.7400, Std = 3.7527
+Open_FRR_Known           : Mean = 51.2400, Std = 3.9212
+Open_EER                 : Mean = 12.5733, Std = 2.2463
+Open_AUROC               : Mean = 93.2200, Std = 2.7058
+Open_DIR_1               : Mean = 72.5900, Std = 8.8478
+Open_DIR_01              : Mean = 64.0067, Std = 7.2400
+Open_OSCR                : Mean = 90.5367, Std = 3.5647
+Open_Mean_Genuine        : Mean = 7.6667, Std = 0.4714
+Open_Mean_Stranger       : Mean = 7.6667, Std = 0.4714
+
+Task: mode0_ccnet_tongji_tongji
+------------------------------
+Closed_Rank1             : Mean = 91.4667, Std = 1.0873
+Closed_EER               : Mean = 3.1200, Std = 0.2379
+Closed_Mean_Genuine      : Mean = 10.0000, Std = 0.8165
+Closed_Mean_Impostor     : Mean = 10.0000, Std = 0.8165
+Open_Rank1               : Mean = 92.2000, Std = 1.0708
+Open_KL_Gate_EER         : Mean = 4.1267, Std = 0.7827
+Open_Uncertainty_EER     : Mean = 44.0667, Std = 1.2072
+Open_Stage1_FRR          : Mean = 44.0667, Std = 1.2472
+Open_FAR_Stranger        : Mean = 17.7000, Std = 2.7532
+Open_FRR_Known           : Mean = 46.8667, Std = 2.3795
+Open_EER                 : Mean = 12.0833, Std = 2.0446
+Open_AUROC               : Mean = 94.8000, Std = 1.2207
+Open_DIR_1               : Mean = 72.0667, Std = 1.4817
+Open_DIR_01              : Mean = 50.4667, Std = 14.1961
+Open_OSCR                : Mean = 89.9067, Std = 1.6045
+Open_Mean_Genuine        : Mean = 10.0000, Std = 0.8165
+Open_Mean_Stranger       : Mean = 10.0000, Std = 0.8165
+
+Task: mode3_ccnet_iitd_iitd
+------------------------------
+Closed_Rank1             : Mean = 99.4500, Std = 0.7778
+Closed_EER               : Mean = 0.7300, Std = 0.5220
+Closed_Mean_Genuine      : Mean = 20.0000, Std = 27.5802
+Closed_Mean_Impostor     : Mean = 20.0000, Std = 27.5802
+Open_Rank1               : Mean = 99.4500, Std = 0.7778
+Open_KL_Gate_EER         : Mean = 2.5567, Std = 1.2540
+Open_Uncertainty_EER     : Mean = 55.6300, Std = 1.0602
+Open_Stage1_FRR          : Mean = 55.3967, Std = 1.1968
+Open_FAR_Stranger        : Mean = 6.8400, Std = 4.8862
+Open_FRR_Known           : Mean = 55.6733, Std = 1.5760
+Open_EER                 : Mean = 1.7033, Std = 1.8532
+Open_AUROC               : Mean = 99.5233, Std = 0.4956
+Open_DIR_1               : Mean = 98.3400, Std = 1.3513
+Open_DIR_01              : Mean = 97.7900, Std = 2.0606
+Open_OSCR                : Mean = 99.2767, Std = 0.8393
+Open_Mean_Genuine        : Mean = 20.0000, Std = 27.5802
+Open_Mean_Stranger       : Mean = 20.0000, Std = 27.5802
+
+Task: mode3_ccnet_iitd_tongji
+------------------------------
+Closed_Rank1             : Mean = 90.4667, Std = 2.1312
+Closed_EER               : Mean = 9.6467, Std = 0.8950
+Closed_Mean_Genuine      : Mean = 3.6667, Std = 1.6997
+Closed_Mean_Impostor     : Mean = 3.6667, Std = 1.6997
+Open_Rank1               : Mean = 90.8000, Std = 2.0461
+Open_KL_Gate_EER         : Mean = 7.3967, Std = 0.8864
+Open_Uncertainty_EER     : Mean = 51.7667, Std = 2.4482
+Open_Stage1_FRR          : Mean = 51.8000, Std = 2.4712
+Open_FAR_Stranger        : Mean = 24.7667, Std = 4.7752
+Open_FRR_Known           : Mean = 58.0667, Std = 0.5735
+Open_EER                 : Mean = 26.8833, Std = 2.5930
+Open_AUROC               : Mean = 81.6433, Std = 2.2639
+Open_DIR_1               : Mean = 36.0667, Std = 7.1969
+Open_DIR_01              : Mean = 20.4000, Std = 5.0938
+Open_OSCR                : Mean = 77.6933, Std = 2.2760
+Open_Mean_Genuine        : Mean = 3.6667, Std = 1.6997
+Open_Mean_Stranger       : Mean = 3.6667, Std = 1.6997
+
+Task: mode3_ccnet_tongji_iitd
+------------------------------
+Closed_Rank1             : Mean = 98.0700, Std = 1.5556
+Closed_EER               : Mean = 1.7767, Std = 0.6389
+Closed_Mean_Genuine      : Mean = 12.6667, Std = 0.4714
+Closed_Mean_Impostor     : Mean = 12.6667, Std = 0.4714
+Open_Rank1               : Mean = 98.0700, Std = 1.5556
+Open_KL_Gate_EER         : Mean = 8.5367, Std = 1.0816
+Open_Uncertainty_EER     : Mean = 48.2600, Std = 3.2809
+Open_Stage1_FRR          : Mean = 48.4800, Std = 3.5360
+Open_FAR_Stranger        : Mean = 13.6633, Std = 3.6879
+Open_FRR_Known           : Mean = 49.5867, Std = 3.7436
+Open_EER                 : Mean = 7.4433, Std = 3.9858
+Open_AUROC               : Mean = 96.6833, Std = 1.6861
+Open_DIR_1               : Mean = 87.5567, Std = 5.4923
+Open_DIR_01              : Mean = 82.8567, Std = 8.3967
+Open_OSCR                : Mean = 96.0533, Std = 2.3543
+Open_Mean_Genuine        : Mean = 12.6667, Std = 0.4714
+Open_Mean_Stranger       : Mean = 12.6667, Std = 0.4714
+
+Task: mode3_ccnet_tongji_tongji
+------------------------------
+Closed_Rank1             : Mean = 96.2667, Std = 1.2037
+Closed_EER               : Mean = 2.1200, Std = 0.7950
+Closed_Mean_Genuine      : Mean = 15.3333, Std = 1.2472
+Closed_Mean_Impostor     : Mean = 15.3333, Std = 1.2472
+Open_Rank1               : Mean = 96.2667, Std = 1.2037
+Open_KL_Gate_EER         : Mean = 4.1267, Std = 0.7827
+Open_Uncertainty_EER     : Mean = 44.0667, Std = 1.2072
+Open_Stage1_FRR          : Mean = 44.0667, Std = 1.2472
+Open_FAR_Stranger        : Mean = 16.4333, Std = 3.1510
+Open_FRR_Known           : Mean = 45.8667, Std = 2.4784
+Open_EER                 : Mean = 6.6167, Std = 0.6980
+Open_AUROC               : Mean = 97.5900, Std = 0.6874
+Open_DIR_1               : Mean = 86.9333, Std = 3.8517
+Open_DIR_01              : Mean = 75.1333, Std = 11.9123
+Open_OSCR                : Mean = 95.6100, Std = 0.9733
+Open_Mean_Genuine        : Mean = 15.3333, Std = 1.2472
+Open_Mean_Stranger       : Mean = 15.3333, Std = 1.2472
+
