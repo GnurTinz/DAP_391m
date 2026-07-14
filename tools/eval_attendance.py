@@ -56,6 +56,7 @@ import hydra
 from torch.utils.data import DataLoader
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+from sklearn.metrics import roc_auc_score, auc
 
 from src.models import UNetPalmModel, ProbabilisticPalmModel
 from src.datasets.factory import DatasetFactory
@@ -667,10 +668,78 @@ def evaluate_open_set(gallery: dict,
         # ── FRR: tỷ lệ known probe bị reject (genuine sim < ngưỡng) ─────────────
         frr = sum(s < eer_thresh  for s in genuine_scores)   / len(genuine_scores)   * 100.0
 
+    # ── AUROC known-vs-unknown ────────────────────────────────────────────
+    y_true_auroc = [1] * len(genuine_scores) + [0] * len(stranger_max_sims)
+    y_score_auroc = genuine_scores + stranger_max_sims
+    if len(np.unique(y_true_auroc)) > 1:
+        auroc_known_unknown = roc_auc_score(y_true_auroc, y_score_auroc) * 100.0
+    else:
+        auroc_known_unknown = 0.0
+
+    # ── DIR/TPIR @ FPIR & OSCR & Risk-Coverage (Definition B) ──────────────
+    dir_at_fpir_1 = 0.0
+    dir_at_fpir_01 = 0.0
+    oscr_area = 0.0
+    fpr_list, ccr_list = [], []
+    coverage_list, risk_list = [], []
+
+    if len(stranger_max_sims) > 0 and len(genuine_scores) > 0:
+        # 1. DIR @ FPIR
+        sorted_stranger_sims = sorted(stranger_max_sims, reverse=True)
+        n_str = len(sorted_stranger_sims)
+        
+        idx_1 = max(0, int(np.ceil(0.01 * n_str)) - 1)
+        thresh_1 = sorted_stranger_sims[idx_1]
+        dir_at_fpir_1 = sum(s >= thresh_1 for s in genuine_scores) / len(genuine_scores) * 100.0
+        
+        idx_01 = max(0, int(np.ceil(0.001 * n_str)) - 1)
+        thresh_01 = sorted_stranger_sims[idx_01]
+        dir_at_fpir_01 = sum(s >= thresh_01 for s in genuine_scores) / len(genuine_scores) * 100.0
+
+        # 2. OSCR & Risk-Coverage
+        known_max_sims = sim_matrix_known.max(dim=1)[0].cpu().numpy()
+        is_correct_rank1 = match_matrix[torch.arange(len(known_labels_dev)), best_idx].cpu().numpy()
+        stranger_arr = np.array(stranger_max_sims)
+        
+        all_scores = np.unique(np.concatenate([known_max_sims, stranger_arr]))
+        all_scores = np.sort(all_scores)[::-1]  # descending
+        
+        n_known = len(known_max_sims)
+        n_total = n_known + n_str
+        
+        for tau in all_scores:
+            ccr = np.sum((known_max_sims >= tau) & is_correct_rank1) / n_known
+            fpr = np.sum(stranger_arr >= tau) / n_str
+            ccr_list.append(float(ccr))
+            fpr_list.append(float(fpr))
+            
+            accepted_knowns = np.sum(known_max_sims >= tau)
+            accepted_strangers = np.sum(stranger_arr >= tau)
+            total_acc = accepted_knowns + accepted_strangers
+            
+            coverage = total_acc / n_total
+            misclassified_knowns = np.sum((known_max_sims >= tau) & ~is_correct_rank1)
+            
+            risk = (misclassified_knowns + accepted_strangers) / total_acc if total_acc > 0 else 0.0
+            
+            coverage_list.append(float(coverage))
+            risk_list.append(float(risk))
+            
+        if len(fpr_list) > 1:
+            oscr_area = auc(fpr_list, ccr_list) * 100.0
+
     return {
         "open_set_rank1":   open_set_rank1,
         "far":              far,
         "frr":              frr,
+        "auroc":            auroc_known_unknown,
+        "dir_at_fpir_1%":   dir_at_fpir_1,
+        "dir_at_fpir_0.1%": dir_at_fpir_01,
+        "oscr_area":        oscr_area,
+        "oscr_fpr_list":    fpr_list,
+        "oscr_ccr_list":    ccr_list,
+        "risk_list":        risk_list,
+        "coverage_list":    coverage_list,
         "eer":              eer_val,
         "eer_threshold":    eer_thresh,
         "unc_eer":          unc_eer,
@@ -852,6 +921,38 @@ def plot_openset_score_distribution(genuine: list, impostor: list, stranger_max:
     if logger:
         logger.info(f"Saved open-set score distribution: {save_path}")
 
+def plot_oscr(fpr_list: list, ccr_list: list, oscr_area: float, save_path: str, logger: logging.Logger = None):
+    """Vẽ đường OSCR (Open-Set Classification Rate)."""
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(fpr_list, ccr_list, color='#2980b9', lw=2, label=f"OSCR Area: {oscr_area:.2f}%")
+    ax.set_title("Open-Set Classification Rate (OSCR)", fontsize=13, pad=10)
+    ax.set_xlabel("False Positive Rate (FPR)")
+    ax.set_ylabel("Correct Classification Rate (CCR)")
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+    if logger:
+        logger.info(f"Saved OSCR curve: {save_path}")
+
+def plot_risk_coverage(coverage_list: list, risk_list: list, save_path: str, logger: logging.Logger = None):
+    """Vẽ Risk-Coverage Curve."""
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(coverage_list, risk_list, color='#c0392b', lw=2, label="Risk-Coverage Curve")
+    ax.set_title("Risk-Coverage Curve (Definition B)", fontsize=13, pad=10)
+    ax.set_xlabel("Coverage (Fraction of accepted probes)")
+    ax.set_ylabel("Risk (Error rate among accepted)")
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+    if logger:
+        logger.info(f"Saved Risk-Coverage curve: {save_path}")
+
 
 # ==============================================================================
 # ENTRY POINT (HYDRA)
@@ -991,6 +1092,10 @@ def main(cfg: DictConfig):
         logger.info(f"  FAR (stranger)  : {open_results['far']:.2f}%   - stranger bi nhan nham (da qua 2 vong)")
         logger.info(f"  FRR (known)     : {open_results['frr']:.2f}%   - known bi reject sai (tong hop)")
         logger.info(f"  EER (open-set)  : {open_results['eer']:.2f}%  (thresh={open_results['eer_threshold']:.4f})")
+        logger.info(f"  AUROC (Known-vs-Unknown): {open_results.get('auroc', 0.0):.2f}%")
+        logger.info(f"  DIR @ FPIR=1%   : {open_results.get('dir_at_fpir_1%', 0.0):.2f}%")
+        logger.info(f"  DIR @ FPIR=0.1% : {open_results.get('dir_at_fpir_0.1%', 0.0):.2f}%")
+        logger.info(f"  OSCR Area       : {open_results.get('oscr_area', 0.0):.2f}%")
         logger.info(f"  Mean Genuine    : {open_results['mean_genuine']:.4f}")
         logger.info(f"  Mean Stranger   : {open_results['mean_stranger']:.4f}")
         logger.info(f"  Known probe     : {open_results['n_known_probe']} | Stranger: {open_results['n_stranger']}")
@@ -1029,6 +1134,23 @@ def main(cfg: DictConfig):
             save_path    = os.path.join(output_dir, "score_distribution_openset.png"),
             logger       = logger,
         )
+
+        if "oscr_fpr_list" in open_results and len(open_results["oscr_fpr_list"]) > 0:
+            plot_oscr(
+                fpr_list  = open_results["oscr_fpr_list"],
+                ccr_list  = open_results["oscr_ccr_list"],
+                oscr_area = open_results["oscr_area"],
+                save_path = os.path.join(output_dir, "oscr_curve.png"),
+                logger    = logger
+            )
+
+        if "coverage_list" in open_results and len(open_results["coverage_list"]) > 0:
+            plot_risk_coverage(
+                coverage_list = open_results["coverage_list"],
+                risk_list     = open_results["risk_list"],
+                save_path     = os.path.join(output_dir, "risk_coverage.png"),
+                logger        = logger
+            )
 
         if open_results.get("known_unc") and open_results.get("stranger_unc"):
             plot_uncertainty_distribution(
