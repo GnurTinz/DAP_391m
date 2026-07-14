@@ -1,7 +1,7 @@
 defaults:
   - dataset: iitd_person_left
   - model: unet
-  - training: default
+  - training: arcface
   - losses: arcface
   - sampling: default
   - loss_schedules: contrastive_only

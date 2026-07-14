@@ -1,6 +1,6 @@
 # Cấu hình huấn luyện tối ưu dành riêng cho mô hình dùng ArcFace Loss
 
-epochs: 100 # Tăng lên 100 để đủ thời gian cho các phase của contrastive_first (lên tới 5000 steps)
+epochs: 150 # Tăng lên 100 để đủ thời gian cho các phase của contrastive_first (lên tới 5000 steps)
 batch_size: 32 # Đã được cập nhật theo yêu cầu
 num_workers: 4
 
