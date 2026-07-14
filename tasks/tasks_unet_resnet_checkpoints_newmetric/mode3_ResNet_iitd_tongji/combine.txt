@@ -1,20 +1,20 @@
 Combined Results for mode3_ResNet_iitd_tongji (from 3 logs)
 ==================================================
 
-Closed_Rank1             : Mean = 25.7333, Std = 2.2231
-Closed_EER               : Mean = 25.7800, Std = 2.4712
-Closed_Mean_Genuine      : Mean = 58.0000, Std = 0.8165
-Closed_Mean_Impostor     : Mean = 58.0000, Std = 0.8165
-Open_Rank1               : Mean = 25.2667, Std = 2.5104
-Open_KL_Gate_EER         : Mean = 34.6333, Std = 1.7225
-Open_Uncertainty_EER     : Mean = 53.5167, Std = 0.4089
-Open_Stage1_FRR          : Mean = 53.5333, Std = 0.4110
-Open_FAR_Stranger        : Mean = 52.6667, Std = 0.8014
-Open_FRR_Known           : Mean = 68.4667, Std = 3.1721
-Open_EER                 : Mean = 66.4000, Std = 3.0323
-Open_AUROC               : Mean = 27.7133, Std = 4.2023
-Open_DIR_1               : Mean = 0.8000, Std = 0.5888
-Open_DIR_01              : Mean = 0.0667, Std = 0.0943
-Open_OSCR                : Mean = 14.6367, Std = 2.0699
-Open_Mean_Genuine        : Mean = 58.0000, Std = 0.8165
-Open_Mean_Stranger       : Mean = 58.0000, Std = 0.8165
+Closed_Rank1             : Mean = 72.2667, Std = 1.3098
+Closed_EER               : Mean = 12.2400, Std = 0.9283
+Closed_Mean_Genuine      : Mean = 38.0000, Std = 0.8165
+Closed_Mean_Impostor     : Mean = 38.0000, Std = 0.8165
+Open_Rank1               : Mean = 72.0667, Std = 1.3888
+Open_KL_Gate_EER         : Mean = 14.9833, Std = 1.4335
+Open_Uncertainty_EER     : Mean = 50.0000, Std = 1.9778
+Open_Stage1_FRR          : Mean = 50.0667, Std = 1.9956
+Open_FAR_Stranger        : Mean = 35.4667, Std = 5.2028
+Open_FRR_Known           : Mean = 57.4000, Std = 2.4712
+Open_EER                 : Mean = 35.7333, Std = 3.6107
+Open_AUROC               : Mean = 69.0067, Std = 4.7116
+Open_DIR_1               : Mean = 15.4000, Std = 6.2032
+Open_DIR_01              : Mean = 5.2667, Std = 1.9137
+Open_OSCR                : Mean = 58.5767, Std = 4.3916
+Open_Mean_Genuine        : Mean = 38.0000, Std = 0.8165
+Open_Mean_Stranger       : Mean = 38.0000, Std = 0.8165

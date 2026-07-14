@@ -1,20 +1,20 @@
 Combined Results for mode0_ResNet_iitd_iitd (from 3 logs)
 ==================================================
 
-Closed_Rank1             : Mean = 84.4967, Std = 3.8919
-Closed_EER               : Mean = 4.9433, Std = 1.0423
-Closed_Mean_Genuine      : Mean = 51.3333, Std = 0.4714
-Closed_Mean_Impostor     : Mean = 51.3333, Std = 0.4714
-Open_Rank1               : Mean = 79.5100, Std = 5.2629
-Open_KL_Gate_EER         : Mean = 16.7300, Std = 1.6385
-Open_Uncertainty_EER     : Mean = 48.2267, Std = 5.5287
-Open_Stage1_FRR          : Mean = 48.2100, Std = 5.4104
-Open_FAR_Stranger        : Mean = 37.1033, Std = 2.7938
-Open_FRR_Known           : Mean = 52.3633, Std = 4.2493
-Open_EER                 : Mean = 23.9567, Std = 3.6589
-Open_AUROC               : Mean = 80.9500, Std = 4.0528
-Open_DIR_1               : Mean = 19.6767, Std = 15.4702
-Open_DIR_01              : Mean = 5.5367, Std = 2.8229
-Open_OSCR                : Mean = 72.5300, Std = 5.6944
-Open_Mean_Genuine        : Mean = 51.3333, Std = 0.4714
-Open_Mean_Stranger       : Mean = 51.3333, Std = 0.4714
+Closed_Rank1             : Mean = 97.5133, Std = 2.4333
+Closed_EER               : Mean = 1.0200, Std = 0.5305
+Closed_Mean_Genuine      : Mean = 31.6667, Std = 1.2472
+Closed_Mean_Impostor     : Mean = 31.6667, Std = 1.2472
+Open_Rank1               : Mean = 97.7900, Std = 2.0606
+Open_KL_Gate_EER         : Mean = 1.0367, Std = 0.4789
+Open_Uncertainty_EER     : Mean = 42.8067, Std = 2.7517
+Open_Stage1_FRR          : Mean = 42.6567, Std = 2.4726
+Open_FAR_Stranger        : Mean = 10.7333, Std = 8.5395
+Open_FRR_Known           : Mean = 43.7600, Std = 2.2438
+Open_EER                 : Mean = 2.6933, Std = 0.6033
+Open_AUROC               : Mean = 99.3267, Std = 0.3272
+Open_DIR_1               : Mean = 95.2933, Std = 1.0255
+Open_DIR_01              : Mean = 93.6267, Std = 2.7541
+Open_OSCR                : Mean = 97.6100, Std = 2.0638
+Open_Mean_Genuine        : Mean = 31.6667, Std = 1.2472
+Open_Mean_Stranger       : Mean = 31.6667, Std = 1.2472

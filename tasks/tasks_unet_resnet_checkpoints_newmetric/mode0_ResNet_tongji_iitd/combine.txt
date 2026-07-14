@@ -1,20 +1,20 @@
 Combined Results for mode0_ResNet_tongji_iitd (from 3 logs)
 ==================================================
 
-Closed_Rank1             : Mean = 67.7767, Std = 3.1443
-Closed_EER               : Mean = 10.9733, Std = 0.3158
-Closed_Mean_Genuine      : Mean = 37.3333, Std = 0.4714
-Closed_Mean_Impostor     : Mean = 37.3333, Std = 0.4714
-Open_Rank1               : Mean = 65.2767, Std = 4.3181
-Open_KL_Gate_EER         : Mean = 24.9933, Std = 1.8149
-Open_Uncertainty_EER     : Mean = 50.7133, Std = 3.6392
-Open_Stage1_FRR          : Mean = 50.8300, Std = 3.5355
-Open_FAR_Stranger        : Mean = 42.1967, Std = 1.7772
-Open_FRR_Known           : Mean = 56.3867, Std = 4.3228
-Open_EER                 : Mean = 38.5967, Std = 0.1933
-Open_AUROC               : Mean = 64.8233, Std = 0.1179
-Open_DIR_1               : Mean = 17.2233, Std = 3.9268
-Open_DIR_01              : Mean = 14.4433, Std = 4.3228
-Open_OSCR                : Mean = 54.0700, Std = 2.4890
-Open_Mean_Genuine        : Mean = 37.3333, Std = 0.4714
-Open_Mean_Stranger       : Mean = 37.3333, Std = 0.4714
+Closed_Rank1             : Mean = 81.7233, Std = 1.7190
+Closed_EER               : Mean = 10.6567, Std = 0.9188
+Closed_Mean_Genuine      : Mean = 38.6667, Std = 27.3537
+Closed_Mean_Impostor     : Mean = 38.6667, Std = 27.3537
+Open_Rank1               : Mean = 81.1700, Std = 1.8809
+Open_KL_Gate_EER         : Mean = 14.3300, Std = 0.9874
+Open_Uncertainty_EER     : Mean = 48.4400, Std = 5.7073
+Open_Stage1_FRR          : Mean = 48.4567, Std = 5.9703
+Open_FAR_Stranger        : Mean = 40.4133, Std = 8.5478
+Open_FRR_Known           : Mean = 51.5033, Std = 5.3526
+Open_EER                 : Mean = 24.6267, Std = 2.5198
+Open_AUROC               : Mean = 79.3833, Std = 3.0459
+Open_DIR_1               : Mean = 41.5567, Std = 3.8175
+Open_DIR_01              : Mean = 37.6867, Std = 5.3761
+Open_OSCR                : Mean = 74.3033, Std = 2.2263
+Open_Mean_Genuine        : Mean = 38.6667, Std = 27.3537
+Open_Mean_Stranger       : Mean = 38.6667, Std = 27.3537

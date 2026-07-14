@@ -66,6 +66,8 @@ def main():
         if m:
             model = m.group(1)
             
+        method = "Baseline" if "baseline" in category.lower() else "Proposed"
+            
         task_results = parse_report_file(filepath)
         
         for task_name, metrics in task_results.items():
@@ -79,16 +81,25 @@ def main():
             if mode == 'tmp':
                 continue
                 
-            train_db = task_parts[1] if len(task_parts) > 1 else ""
-            test_db = task_parts[2] if len(task_parts) > 2 else ""
+            known_datasets = ['iitd', 'tongji', 'polyud']
+            
+            if len(task_parts) > 1:
+                if task_parts[1] in known_datasets:
+                    train_db = task_parts[1]
+                    test_db = task_parts[2] if len(task_parts) > 2 else ""
+                else:
+                    train_db = task_parts[2] if len(task_parts) > 2 else ""
+                    test_db = task_parts[3] if len(task_parts) > 3 else ""
+            else:
+                train_db = ""
+                test_db = ""
             
             row = {
-                "Category": category,
                 "Model": model,
+                "Method": method,
                 "Mode": mode,
                 "Train": train_db,
-                "Test": test_db,
-                "Task": task_name
+                "Test": test_db
             }
             row.update(metrics)
             all_metrics_keys.update(metrics.keys())
@@ -98,9 +109,8 @@ def main():
     preferred_order = [
         "Closed_Rank1", "Closed_EER", "Closed_Mean_Genuine", "Closed_Mean_Impostor",
         "Open_Rank1", "Open_KL_Gate_EER", "Open_Uncertainty_EER", 
-        "Open_Stage1_FRR", "Open_FAR_Stranger", "Open_FRR_Known", "Open_EER",
-        "Open_Mean_Genuine", "Open_Mean_Stranger", "Open_AUROC", "Open_DIR_1",
-        "Open_DIR_01", "Open_OSCR"
+        "Open_EER", "Open_Mean_Genuine", "Open_Mean_Stranger", 
+        "Open_AUROC", "Open_DIR_1", "Open_DIR_01", "Open_OSCR"
     ]
     
     sorted_metrics = []
@@ -110,14 +120,14 @@ def main():
             
     # Add any remaining metrics that were not in preferred_order
     for k in sorted(list(all_metrics_keys)):
-        if k not in sorted_metrics:
+        if k not in sorted_metrics and "FAR" not in k and "FRR" not in k:
             sorted_metrics.append(k)
     
-    fieldnames = ["Category", "Model", "Mode", "Train", "Test", "Task"] + sorted_metrics
+    fieldnames = ["Model", "Method", "Mode", "Train", "Test"] + sorted_metrics
     
     output_csv = os.path.join(base_dir, "summary_table.csv")
     with open(output_csv, 'w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
         writer.writeheader()
         for row in all_data:
             writer.writerow(row)
