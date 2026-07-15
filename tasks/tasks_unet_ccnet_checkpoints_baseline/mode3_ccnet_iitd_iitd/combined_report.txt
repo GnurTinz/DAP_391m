@@ -1,0 +1,23 @@
+Overall Combined Report for mode3_ccnet_iitd_iitd
+==================================================
+
+Task: mode3_ccnet_iitd_iitd
+------------------------------
+Closed_Rank1             : Mean = 88.0900, Std = 1.4029
+Closed_EER               : Mean = 17.7067, Std = 3.2188
+Closed_Mean_Genuine      : Mean = 31.0000, Std = 0.8165
+Closed_Mean_Impostor     : Mean = 31.0000, Std = 0.8165
+Open_Rank1               : Mean = 81.1700, Std = 1.3376
+Open_KL_Gate_EER         : Mean = 27.8433, Std = 3.6848
+Open_Uncertainty_EER     : Mean = 48.1833, Std = 1.0246
+Open_Stage1_FRR          : Mean = 47.9267, Std = 1.2138
+Open_FAR_Stranger        : Mean = 30.6667, Std = 2.6256
+Open_FRR_Known           : Mean = 62.3333, Std = 3.6591
+Open_EER                 : Mean = 34.2767, Std = 5.1806
+Open_AUROC               : Mean = 70.2200, Std = 5.2708
+Open_DIR_1               : Mean = 26.8867, Std = 5.0013
+Open_DIR_01              : Mean = 22.7467, Std = 7.3870
+Open_OSCR                : Mean = 66.2933, Std = 4.8120
+Open_Mean_Genuine        : Mean = 31.0000, Std = 0.8165
+Open_Mean_Stranger       : Mean = 31.0000, Std = 0.8165
+

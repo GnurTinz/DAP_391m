@@ -1,0 +1,59 @@
+2026-07-15 02:18:49,187 [INFO] [Eval] mode=0 | neg_strategy=real | device=cuda
+2026-07-15 02:18:49,187 [INFO] Reading model config from D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\config_backup.yaml
+2026-07-15 02:18:49,711 [INFO] Loaded checkpoint: D:\FPT\03_FPT_SU26\DAP391m\0.GIT_LAM\DAP_391m\logs\version_37\checkpoints\last.ckpt
+2026-07-15 02:18:49,713 [INFO] Frozen 34 BatchNorm layer(s) into eval mode.
+2026-07-15 02:18:49,714 [INFO] Output directory: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real
+2026-07-15 02:18:49,714 [INFO] [Open-Set Mode] split_mode='person' — building 3 dataloaders
+2026-07-15 02:18:49,806 [INFO] --- STEP 1: Extracting features (register / probe / stranger) ---
+2026-07-15 02:19:02,514 [INFO] Saved feature cache (+ 50 ref images): D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\feats_register.pt
+2026-07-15 02:19:15,087 [INFO] Saved feature cache (+ 50 ref images): D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\feats_probe.pt
+2026-07-15 02:19:28,209 [INFO] Saved feature cache (+ 50 ref images): D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\feats_stranger.pt
+2026-07-15 02:19:28,210 [INFO] Register : 500 samples, 50 identities
+2026-07-15 02:19:28,210 [INFO] Probe    : 500 samples, 50 identities
+2026-07-15 02:19:28,210 [INFO] Stranger : 1000 samples, 50 identities
+2026-07-15 02:19:28,210 [INFO] --- STEP 2: Building gallery (from register split) ---
+2026-07-15 02:19:28,210 [INFO] Building gallery: Mode=0, neg_strategy='real', 50 identities
+2026-07-15 02:19:28,256 [INFO] Saved gallery cache: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\gallery.pt
+2026-07-15 02:19:28,256 [INFO] --- STEP 3a: Closed-set evaluation on known probe ---
+2026-07-15 02:19:28,303 [INFO] ============================================================
+2026-07-15 02:19:28,305 [INFO]   [Closed-Set — Known Probe Only]
+2026-07-15 02:19:28,305 [INFO]   Rank-1 Accuracy : 49.40%
+2026-07-15 02:19:28,305 [INFO]   EER             : 26.75%  (thresh=0.9536)
+2026-07-15 02:19:28,305 [INFO]   Mean Genuine    : 0.9632
+2026-07-15 02:19:28,305 [INFO]   Mean Impostor   : 0.8643
+2026-07-15 02:19:28,306 [INFO]   Probe count     : 500
+2026-07-15 02:19:28,306 [INFO] ============================================================
+2026-07-15 02:19:28,306 [INFO] --- STEP 3b: Open-set evaluation with stranger ---
+2026-07-15 02:19:28,475 [INFO] ============================================================
+2026-07-15 02:19:28,475 [INFO]   [Open-Set — Known + Stranger (2-Stage Rejection)]
+2026-07-15 02:19:28,475 [INFO]   Open-Set Rank-1 : 46.00%
+2026-07-15 02:19:28,475 [INFO]   KL-Gate EER     : 35.65% (thresh=10.6039)
+2026-07-15 02:19:28,475 [INFO]   Uncertainty EER : 57.90% (thresh=1.0380)
+2026-07-15 02:19:28,475 [INFO]   Stage-1 FRR     : 57.80%   - known bi reject boi Uncertainty
+2026-07-15 02:19:28,475 [INFO]   FAR (stranger)  : 29.40%   - stranger bi nhan nham (da qua 2 vong)
+2026-07-15 02:19:28,475 [INFO]   FRR (known)     : 77.80%   - known bi reject sai (tong hop)
+2026-07-15 02:19:28,475 [INFO]   EER (open-set)  : 50.80%  (thresh=0.9536)
+2026-07-15 02:19:28,475 [INFO]   AUROC (Known-vs-Unknown): 48.00%
+2026-07-15 02:19:28,475 [INFO]   DIR @ FPIR=1%   : 4.40%
+2026-07-15 02:19:28,475 [INFO]   DIR @ FPIR=0.1% : 1.80%
+2026-07-15 02:19:28,475 [INFO]   OSCR Area       : 28.03%
+2026-07-15 02:19:28,475 [INFO]   Mean Genuine    : 0.7234
+2026-07-15 02:19:28,477 [INFO]   Mean Stranger   : 0.9260
+2026-07-15 02:19:28,477 [INFO]   Known probe     : 500 | Stranger: 1000
+2026-07-15 02:19:28,477 [INFO] ============================================================
+2026-07-15 02:19:28,518 [INFO] Saved results: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\results.json
+2026-07-15 02:19:28,518 [INFO] --- STEP 4: Visualizing open-set score & uncertainty distribution ---
+2026-07-15 02:19:28,820 [INFO] Saved open-set score distribution: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\score_distribution_openset.png
+2026-07-15 02:19:28,906 [INFO] Saved OSCR curve: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\oscr_curve.png
+2026-07-15 02:19:28,988 [INFO] Saved Risk-Coverage curve: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\risk_coverage.png
+2026-07-15 02:19:29,179 [INFO] Saved uncertainty distribution: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\uncertainty_distribution_openset.png
+2026-07-15 02:19:29,357 [INFO] Saved sigma distribution: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\sigma_distribution_openset.png
+2026-07-15 02:19:29,357 [INFO] --- STEP 5: t-SNE visualization ---
+2026-07-15 02:19:29,357 [INFO] Running t-SNE (2000 points, perplexity=30)...
+2026-07-15 02:19:34,808 [INFO] Saved t-SNE plot: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\tsne_proj.png
+2026-07-15 02:19:34,808 [INFO] Running t-SNE (2000 points, perplexity=30)...
+2026-07-15 02:19:39,139 [INFO] Saved t-SNE plot: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real\tsne_mu.png
+2026-07-15 02:19:39,139 [INFO] 
+2026-07-15 02:19:39,139 [INFO] All outputs saved to: D:/FPT/03_FPT_SU26/DAP391m/0.GIT_LAM/DAP_391m/logs/version_37\eval\mode0_baseline_real
+2026-07-15 02:19:39,139 [INFO] Log file: tasks\eval_mode0_baseline_real_20260715_021849.log
+2026-07-15 02:19:39,139 [INFO] Done.
