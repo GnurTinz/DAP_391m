@@ -80,6 +80,8 @@ class LossSchedulerManager:
     def __init__(self, schedules_config):
         self.schedules = {}
         for loss_name, cfg in schedules_config.items():
+            if not hasattr(cfg, 'get'):
+                continue
             stype = cfg.get('type', 'constant').lower()
             if stype == 'constant':
                 self.schedules[loss_name] = ConstantScheduler(cfg.get('value', 0.0))
