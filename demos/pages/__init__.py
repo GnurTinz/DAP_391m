@@ -1,0 +1,12 @@
+# demos/pages/__init__.py
+from . import home, results_overview, latent_viz, epoch_samples, inference_modes, score_distribution, paper_report
+
+__all__ = [
+    "home",
+    "results_overview",
+    "latent_viz",
+    "epoch_samples",
+    "inference_modes",
+    "score_distribution",
+    "paper_report",
+]
