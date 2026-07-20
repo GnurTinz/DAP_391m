@@ -266,8 +266,11 @@ def render():
     ]
     for col, (name, badge, model_id, status, pros_cons, summary) in zip(bc, backbones):
         bullets = "".join([
-            f"<div style='font-size:0.73rem; color:{\"#6ee7b7\" if ok else \"#f9a8d4\"}; margin:2px 0;'>"
-            f"{'✅' if ok else '⚠️'} {text}</div>"
+            "<div style='font-size:0.73rem; color:{}; margin:2px 0;'>{} {}</div>".format(
+                '#6ee7b7' if ok else '#f9a8d4',
+                '✅' if ok else '⚠️',
+                text
+            )
             for text, ok in pros_cons
         ])
         col.markdown(f"""
