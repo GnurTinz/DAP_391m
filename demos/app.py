@@ -27,7 +27,7 @@ with open(css_path) as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # ── Pages ────────────────────────────────────────────────────────────────────────
-from pages import home, results_overview, latent_viz, epoch_samples, inference_modes, score_distribution, paper_report
+from pages import home, results_overview, latent_viz, epoch_samples, inference_modes, score_distribution, paper_report, ccnet_demo, attendance_demo, recognize_demo
 
 PAGES = {
     "🏠  Home": home,
@@ -37,6 +37,9 @@ PAGES = {
     "🖼️  Epoch Samples": epoch_samples,
     "⚡  Inference Modes": inference_modes,
     "📈  Score Distributions": score_distribution,
+    "🔬  CCNet Demo": ccnet_demo,
+    "🎯  Attendance Demo": attendance_demo,
+    "🖐️  Palm Recognition": recognize_demo,
 }
 
 # ── Sidebar nav ──────────────────────────────────────────────────────────────────
