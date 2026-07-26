@@ -181,29 +181,25 @@ def symmetric_kl(mu_p, lv_p, mu_g, lv_g) -> float:
 # ==============================================================================
 
 def match_gallery(mu_probe, logvar_probe, gallery: dict,
-                  tau_S: float, tau_U: float, tau_K: float) -> dict:
+                  tau_S: float, tau_K: float) -> dict:
     """
     Match probe against gallery using Mode M3 (direct cosine on latent mu).
-    Apply tri-threshold open-set rejection.
+    Apply dual-threshold open-set rejection (Similarity + KL).
 
     Args:
         mu_probe, logvar_probe : (1, latent_dim) probe tensors
         gallery                : dict built by build_gallery()
-        tau_S / tau_U / tau_K  : similarity / uncertainty / KL thresholds
+        tau_S / tau_K          : similarity / KL thresholds
 
     Returns:
-        dict with keys: accepted, person_id, name, score, uncertainty, d_skl,
-                        gate_U, gate_S, gate_K, all_scores
+        dict with keys: accepted, person_id, name, score, d_skl,
+                        gate_S, gate_K, all_scores
     """
     if not gallery:
         return {"accepted": False, "reason": "Gallery is empty"}
 
-    # Gate 1: Uncertainty
-    U_p = uncertainty_score(logvar_probe)
-    gate_U = bool(U_p <= tau_U)
-
-    # Stack gallery mus
-    ids       = list(gallery.keys())
+    # Stack gallery mus — filter out non-dict entries (e.g. _errors)
+    ids       = [k for k in gallery.keys() if isinstance(gallery[k], dict)]
     mus       = torch.cat([gallery[i]["mu"] for i in ids], dim=0)   # (N, D)
 
     # Cosine similarity (Mode M3)
@@ -215,28 +211,26 @@ def match_gallery(mu_probe, logvar_probe, gallery: dict,
     best_id    = ids[best_idx]
     best_score = float(scores[best_idx].item())
 
-    # Gate 2: Similarity
+    # Gate 1: Similarity
     gate_S = bool(best_score >= tau_S)
 
-    # Gate 3: Symmetric KL to best gallery template
+    # Gate 2: Symmetric KL to best gallery template
     mu_g  = gallery[best_id]["mu"]
     lv_g  = gallery[best_id]["logvar"]
     d_skl = symmetric_kl(mu_probe, logvar_probe, mu_g, lv_g)
     gate_K = bool(d_skl <= tau_K)
 
-    accepted = gate_U and gate_S and gate_K
+    accepted = gate_S and gate_K
 
     return {
-        "accepted":    accepted,
-        "person_id":   best_id,
-        "name":        gallery[best_id].get("name", best_id),
-        "score":       best_score,
-        "uncertainty": U_p,
-        "d_skl":       d_skl,
-        "gate_U":      gate_U,
-        "gate_S":      gate_S,
-        "gate_K":      gate_K,
-        "all_scores":  {ids[i]: float(scores[i].item()) for i in range(len(ids))},
+        "accepted":   accepted,
+        "person_id":  best_id,
+        "name":       gallery[best_id].get("name", best_id),
+        "score":      best_score,
+        "d_skl":      d_skl,
+        "gate_S":     gate_S,
+        "gate_K":     gate_K,
+        "all_scores": {ids[i]: float(scores[i].item()) for i in range(len(ids))},
     }
 
 

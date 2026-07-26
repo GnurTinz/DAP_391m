@@ -303,7 +303,7 @@ def _render_gallery_section(gallery_dir: str, enrolled_ids: set):
 
 def _render_recognize_section(
     gallery: dict, ckpt_path: str,
-    tau_S: float, tau_U: float, tau_K: float,
+    tau_S: float, tau_K: float,
 ):
     st.markdown(
         "<div class='section-header'>🔍 Nhận diện – Upload ảnh lòng bàn tay</div>",
@@ -367,7 +367,7 @@ def _render_recognize_section(
             with st.spinner("Nhận diện..."):
                 tensor         = preprocess_pil(roi)
                 mu_p, lv_p     = embed_image(model, tensor)
-                result         = match_gallery(mu_p, lv_p, gallery, tau_S, tau_U, tau_K)
+                result         = match_gallery(mu_p, lv_p, gallery, tau_S, tau_K)
 
             # Result card
             st.markdown(
@@ -383,15 +383,6 @@ def _render_recognize_section(
             st.markdown(
                 "<div style='margin-top:0.8rem; font-size:0.78rem; "
                 "font-weight:600; color:#64748b;'>Open-Set Gates</div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                _gate_html(
-                    "Uncertainty",
-                    f"U={result['uncertainty']:.4f} ≤ τU={tau_U:.2f}",
-                    f"{result['uncertainty']:.4f}",
-                    result["gate_U"],
-                ),
                 unsafe_allow_html=True,
             )
             st.markdown(
@@ -650,7 +641,6 @@ def render():
             unsafe_allow_html=True,
         )
         tau_S = st.slider("τ-S (Similarity)", 0.0, 1.0, 0.50, 0.01, key="rec_tau_S")
-        tau_U = st.slider("τ-U (Uncertainty)", 0.0, 2.0, 0.80, 0.01, key="rec_tau_U")
         tau_K = st.slider("τ-K (KL distance)", 0.0, 50.0, 10.0, 0.5,  key="rec_tau_K")
 
         st.markdown("<hr style='border-color:rgba(255,255,255,0.08);'>", unsafe_allow_html=True)
@@ -747,7 +737,7 @@ def render():
         _render_gallery_section(gallery_dir, enrolled_ids)
 
     with tab_recognize:
-        _render_recognize_section(gallery, ckpt_path, tau_S, tau_U, tau_K)
+        _render_recognize_section(gallery, ckpt_path, tau_S, tau_K)
 
     with tab_enroll:
         _render_enroll_section(gallery_dir)

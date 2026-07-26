@@ -26,7 +26,7 @@ if os.path.join(ROOT, "demos") not in sys.path:
     sys.path.insert(0, os.path.join(ROOT, "demos"))
 
 from inference_utils import (
-    load_model, preprocess_pil, crop_palm_roi,
+    load_model, preprocess_pil,
     embed_image, match_gallery, build_gallery,
 )
 
@@ -190,8 +190,6 @@ def render():
         )
         tau_S = st.slider("&#964;&#8209;S  (Similarity)", 0.0, 1.0, 0.50, 0.01, key="att_tau_S",
                           help="Minimum cosine similarity to accept")
-        tau_U = st.slider("&#964;&#8209;U  (Uncertainty)", 0.0, 2.0, 0.80, 0.01, key="att_tau_U",
-                          help="Maximum sigma mean to accept (lower = stricter quality gate)")
         tau_K = st.slider("&#964;&#8209;K  (KL distance)", 0.0, 50.0, 10.0, 0.5, key="att_tau_K",
                           help="Maximum symmetric KL divergence to accept")
 
@@ -331,109 +329,105 @@ def render():
                     tensor      = preprocess_pil(roi)
                     mu_p, lv_p  = embed_image(model, tensor)
                     result      = match_gallery(
-                        mu_p, lv_p, gallery, tau_S, tau_U, tau_K
+                        mu_p, lv_p, gallery, tau_S, tau_K
                     )
 
+                # ── Result badge ──────────────────────────────────────
+                st.markdown(
+                    _result_badge_html(
+                        result["accepted"],
+                        result.get("name", "?"),
+                        result.get("score", 0.0),
+                    ),
+                    unsafe_allow_html=True,
+                )
 
+                # ── Gate details ──────────────────────────────────────
+                st.markdown(
+                    "<div style='margin-top:1rem; font-weight:600; "
+                    "font-size:0.82rem; color:#94a3b8;'>&#128272; Open-Set Gates</div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    _gate_row(
+                        "Similarity Gate",
+                        "S(p,g*) = {:.4f}  &#8805;  &#964;-S = {:.2f}".format(
+                            result["score"], tau_S),
+                        "{:.4f}".format(result["score"]),
+                        result["gate_S"],
+                    ),
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    _gate_row(
+                        "KL Gate",
+                        "D_SKL = {:.4f}  &#8804;  &#964;-K = {:.2f}".format(
+                            result["d_skl"], tau_K),
+                        "{:.4f}".format(result["d_skl"]),
+                        result["gate_K"],
+                    ),
+                    unsafe_allow_html=True,
+                )
 
-                    # ── Gate details ──────────────────────────────────────
-                    st.markdown(
-                        "<div style='margin-top:1rem; font-weight:600; "
-                        "font-size:0.82rem; color:#94a3b8;'>&#128272; Open-Set Gates</div>",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        _gate_row(
-                            "Uncertainty Gate",
-                            "U_p = {:.4f}  &#8804;  &#964;-U = {:.2f}".format(
-                                result["uncertainty"], tau_U),
-                            "{:.4f}".format(result["uncertainty"]),
-                            result["gate_U"],
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        _gate_row(
-                            "Similarity Gate",
-                            "S(p,g*) = {:.4f}  &#8805;  &#964;-S = {:.2f}".format(
-                                result["score"], tau_S),
-                            "{:.4f}".format(result["score"]),
-                            result["gate_S"],
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        _gate_row(
-                            "KL Gate",
-                            "D_SKL = {:.4f}  &#8804;  &#964;-K = {:.2f}".format(
-                                result["d_skl"], tau_K),
-                            "{:.4f}".format(result["d_skl"]),
-                            result["gate_K"],
-                        ),
-                        unsafe_allow_html=True,
-                    )
+                # ── Top-K similarity bar ──────────────────────────────
+                if result.get("all_scores"):
+                    with st.expander("&#128202; Top similarity scores"):
+                        import plotly.graph_objects as go
+                        sorted_scores = sorted(
+                            result["all_scores"].items(),
+                            key=lambda x: x[1], reverse=True,
+                        )[:10]
+                        ids_top   = [s[0] for s in sorted_scores]
+                        vals_top  = [s[1] for s in sorted_scores]
+                        bar_colors = [
+                            "#10b981" if i == ids_top.index(result["person_id"]) else "#7c3aed"
+                            for i in range(len(ids_top))
+                        ]
+                        fig = go.Figure(go.Bar(
+                            x=vals_top, y=ids_top,
+                            orientation="h",
+                            marker_color=bar_colors,
+                            text=["{:.3f}".format(v) for v in vals_top],
+                            textposition="outside",
+                        ))
+                        fig.update_layout(
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            font=dict(color="#94a3b8", family="Inter"),
+                            margin=dict(l=0, r=20, t=20, b=0),
+                            height=max(200, len(ids_top) * 32),
+                            xaxis=dict(
+                                range=[0, 1],
+                                gridcolor="rgba(255,255,255,0.05)",
+                            ),
+                            yaxis=dict(autorange="reversed"),
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
 
-                    # ── Top-K similarity bar ──────────────────────────────
-                    if result.get("all_scores"):
-                        with st.expander("&#128202; Top similarity scores"):
-                            import plotly.graph_objects as go
-                            sorted_scores = sorted(
-                                result["all_scores"].items(),
-                                key=lambda x: x[1], reverse=True,
-                            )[:10]
-                            ids_top   = [s[0] for s in sorted_scores]
-                            vals_top  = [s[1] for s in sorted_scores]
-                            bar_colors = [
-                                "#10b981" if i == ids_top.index(result["person_id"]) else "#7c3aed"
-                                for i in range(len(ids_top))
-                            ]
-                            fig = go.Figure(go.Bar(
-                                x=vals_top, y=ids_top,
-                                orientation="h",
-                                marker_color=bar_colors,
-                                text=["{:.3f}".format(v) for v in vals_top],
-                                textposition="outside",
-                            ))
-                            fig.update_layout(
-                                paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="rgba(0,0,0,0)",
-                                font=dict(color="#94a3b8", family="Inter"),
-                                margin=dict(l=0, r=20, t=20, b=0),
-                                height=max(200, len(ids_top) * 32),
-                                xaxis=dict(
-                                    range=[0, 1],
-                                    gridcolor="rgba(255,255,255,0.05)",
-                                ),
-                                yaxis=dict(autorange="reversed"),
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
-
-                    # ── Log attendance ────────────────────────────────────
-                    ts  = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    row = {
-                        "timestamp":   ts,
-                        "person_id":   result.get("person_id", "?"),
-                        "name":        result.get("name", "?"),
-                        "accepted":    result["accepted"],
-                        "score":       round(result.get("score", 0.0), 4),
-                        "uncertainty": round(result.get("uncertainty", 0.0), 4),
-                        "d_skl":       round(result.get("d_skl", 0.0), 4),
-                        "gate_U":      result.get("gate_U", False),
-                        "gate_S":      result.get("gate_S", False),
-                        "gate_K":      result.get("gate_K", False),
-                        "tau_S":       tau_S,
-                        "tau_U":       tau_U,
-                        "tau_K":       tau_K,
-                    }
-                    st.session_state.att_log.append(row)
-                    _append_attendance_log(row)
+                # ── Log attendance ────────────────────────────────────
+                ts  = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                row = {
+                    "timestamp":  ts,
+                    "person_id":  result.get("person_id", "?"),
+                    "name":       result.get("name", "?"),
+                    "accepted":   result["accepted"],
+                    "score":      round(result.get("score", 0.0), 4),
+                    "d_skl":      round(result.get("d_skl", 0.0), 4),
+                    "gate_S":     result.get("gate_S", False),
+                    "gate_K":     result.get("gate_K", False),
+                    "tau_S":      tau_S,
+                    "tau_K":      tau_K,
+                }
+                st.session_state.att_log.append(row)
+                _append_attendance_log(row)
             else:
                 st.markdown(
                     "<div style='padding:3rem 1rem; text-align:center; "
                     "color:var(--text-muted); font-size:0.9rem;'>"
-                    "&#128247; Chụp ảnh để bắt đầu nhận diện</div>",
+                    "&#128247; Upload ảnh ROI để bắt đầu nhận diện</div>",
                     unsafe_allow_html=True,
                 )
+
 
     # ── Phase 3: Attendance Log ────────────────────────────────────────────────
     st.markdown(
